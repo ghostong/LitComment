@@ -1,0 +1,27 @@
+{
+    "name": "lit/litcomment",
+    "description": "基于 Redis, MySQL 的评论系统",
+    "authors": [
+        {
+            "name": "litong",
+            "email": "ghostong@126.com"
+        }
+    ],
+    "keywords": [
+        "lit",
+        "litComment",
+        "comment",
+        "评论"
+    ],
+    "require": {
+        "php": ">=7.2.0",
+        "lit/drivers": "dev-master"
+    },
+    "minimum-stability": "stable",
+    "autoload": {
+        "files": [],
+        "psr-4": {
+            "Lit\\Comment\\": "src"
+        }
+    }
+}
