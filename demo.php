@@ -8,19 +8,12 @@
 
 require_once ("./vendor/autoload.php");
 
-$redisConfig["host"] = "127.0.0.1";
-$redisConfig["port"] = "3306";
-$redisConfig["auth"] = "123@456@";
-$redisConfig["db"] = "0";
+$lc = new \Lit\Comment\Init();
 
-$mySqlConfig["host"] = "127.0.0.1";
-$mySqlConfig["port"] = "3306";
-$mySqlConfig["username"] = "comment";
-$mySqlConfig["password"] = "123456";
-$mySqlConfig["dbname"] = "comment";
-$mySqlConfig["charset"] = "utf8mb4";
-
-$lc = new \Lit\Comment\Main( $redisConfig, $mySqlConfig,"li_comment_","li_comment_" );
+$lc ->setRedisConfig( "127.0.0.1", 6379, "123@456@", 0 )
+    ->setMySqlConfig( "127.0.0.1", 3306, "comment", "123456", "comment", "utf8mb4" )
+    ->setMySqlTablePrefix("comment")
+    ->setRedisKeyPrefix("lc");
 
 $lc->comment()->add(
     0, //来源

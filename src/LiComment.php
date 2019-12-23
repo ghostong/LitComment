@@ -20,10 +20,10 @@ class LiComment extends LiBase {
         $this->tablePrefix = $tablePrefix;
     }
 
-    function add ( $from, $commentedId, $userId, $content, $ext ){
+    function add ( $origin, $commentedId, $userId, $content, $ext ){
         $tableName = $this->tableName($this->tablePrefix, $commentedId);
         $data = [
-            "from" => $from,
+            "origin" => $origin,
             "commented_id" => $commentedId,
             "parent_id" => 0,
             "user_id" => $userId,
