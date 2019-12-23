@@ -8,8 +8,10 @@
 
 namespace Lit\Comment;
 
+use http\Exception;
 use Lit\Drivers\LiRedis;
 use Lit\Drivers\LiMySQL;
+use MongoDB\BSON\ObjectId;
 
 class Init {
 
@@ -36,8 +38,20 @@ class Init {
     private $mySqlDbName = "";
     private $mySqlCharSet = "";
 
-    function __construct( ){
+    private $originId = "";
 
+    private $commentObj = "";
+    private $replyObj = "";
+    private $listObj = "";
+
+
+    function __construct( $originId, $token ){
+        $liRam = new LiRAM();
+        if ( ! $liRam->checkAccess( $originId, $token ) ) {
+            throw new \Exception("Access Denied !", 0);
+        }else{
+            $this->originId = $originId;
+        }
     }
 
     // redis 设置
@@ -118,11 +132,28 @@ class Init {
         return $this->tablePrefix;
     }
 
-
     //评论
     public function comment () {
-        $comment = new LiComment( $this->getRedisClient(), $this->getMySqlClient(),  $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix() );
-        return $comment;
+        if (!is_object($this->commentObj)){
+            $this->commentObj = new LiComment( $this->originId, $this->getRedisClient(), $this->getMySqlClient(),  $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix() );
+        }
+        return $this->commentObj;
+    }
+
+    //回复
+    public function reply () {
+        if (!is_object($this->replyObj)) {
+            $this->replyObj = new LiReply( $this->originId, $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
+        }
+        return $this->replyObj;
+    }
+
+    //列表
+    public function list () {
+        if (!is_object($this->listObj)) {
+            $this->listObj = new LiList( $this->originId, $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
+        }
+        return $this->listObj;
     }
 
 }
