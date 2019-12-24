@@ -72,11 +72,11 @@ class LiComment extends LiBase {
     public function setCommentInfo( $commentedId, $commentId ){
         $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
         $commentInfo = $this->mySqlClient->GetOne( $tableName, 'comment_id = ?', $commentId) ;
-        if (!$this->getCheck($commentedId, $commentInfo)){
-            return [];
-        }
         if ($commentInfo) {
             $commentInfo = $this->dbDataDecode($commentInfo);
+            if (!$this->getCheck($commentedId, $commentInfo)){
+                return [];
+            }
         }else{
             $commentInfo = [];
         }
@@ -143,8 +143,8 @@ class LiComment extends LiBase {
      * @return bool
      */
     public function del ( $commentedId, $commentId, $actionUserId ){
-        $commentInfo = $this->getComment( $commentedId, $commentId );
-        if ( ! $this->deleteCheck($commentInfo,$actionUserId) ) {
+        $commentInfo = $this->getCommentInfo( $commentedId, $commentId );
+        if ( ! $this->deleteCheck($commentedId, $commentInfo,$actionUserId) ) {
             return false;
         }
         $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));

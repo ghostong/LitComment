@@ -206,7 +206,7 @@ class LiList extends LiBase {
         }
         $data = $this->getReplyList( $key, $order, $start, $end, $pageSize);
         if ($data) {
-            return  $this->reply()->getReplyInfos($commentedId,array_keys($data));
+            return  $this->reply()->getReplyInfos($commentedId,$commentId,array_keys($data));
         }else{
             return [];
         }

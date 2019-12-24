@@ -99,7 +99,7 @@ class LiReply extends LiBase {
         $replyInfos = $this->redisClient->mGet($redisKeys);
         $combine = array_combine($replyIds,$replyInfos);
         foreach ( $combine as $replyId => $info ) {
-            $replyInfo = $info ?  json_decode($info,true) : $this->getReplyInfo($commentedId,$replyId);
+            $replyInfo = $info ?  json_decode($info,true) : $this->getReplyInfo($commentedId,$commentId,$replyId);
             if( !$this->getCheck( $commentId, $replyInfo ) ) {
                 $combine[$replyId] = [];
             }else{
