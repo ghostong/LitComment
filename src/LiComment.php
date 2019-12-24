@@ -27,12 +27,19 @@ class LiComment extends LiBase {
         $this->tablePrefix = $tablePrefix;
     }
 
+    //获取错误信息
     public function getLastError(){
         return $this->commentLastError;
     }
 
+    //设置错误信息
     private function setLastError( $lastError ){
         $this->commentLastError = $lastError;
+    }
+
+    //评论信息的key
+    private function getCommentInfoKey( $commentId ){
+        return $this->redisKeyPrefix.":comment:info:".$commentId;
     }
 
     /**
@@ -41,22 +48,61 @@ class LiComment extends LiBase {
      * @param string $commentId 评论ID
      * @return array
      */
-    public function getComment( $commentedId, $commentId ){
+    public function getCommentInfo( $commentedId, $commentId ){
+        $key = $this->getCommentInfoKey($commentId);
+        $redisRes = $this->redisClient->get($key);
+        if ($redisRes){
+            $commentInfo = json_decode($redisRes,true);
+            if (!$this->getCheck($commentedId, $commentInfo)){
+                return [];
+            }else{
+                return $commentInfo;
+            }
+        }else{
+            return $this->setCommentInfo( $commentedId, $commentId );
+        }
+    }
+
+    /**
+     * 设置单个评论缓存
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @return array
+     */
+    public function setCommentInfo( $commentedId, $commentId ){
         $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
         $commentInfo = $this->mySqlClient->GetOne( $tableName, 'comment_id = ?', $commentId) ;
-        if (!$this->getCheck($commentInfo)){
+        if (!$this->getCheck($commentedId, $commentInfo)){
             return [];
         }
         if ($commentInfo) {
             $commentInfo = $this->dbDataDecode($commentInfo);
-            return $commentInfo;
         }else{
-            return [];
+            $commentInfo = [];
         }
+        $this->redisClient->set($this->getCommentInfoKey($commentId),json_encode($commentInfo));
+        return $commentInfo;
     }
 
-    public function getComments(){
-
+    /**
+     * 获取多个评论
+     * @param string $commentedId 被评论物ID
+     * @param array $commentIds 多个评论ID
+     * @return array
+     */
+    public function getCommentInfos( $commentedId, $commentIds = array() ){
+        $redisKeys = array_map(function( $commentId ){ return $this->getCommentInfoKey($commentId); },$commentIds);
+        $commentInfos = $this->redisClient->mGet($redisKeys);
+        $combine = array_combine($commentIds,$commentInfos);
+        foreach ( $combine as $commentId => $info ) {
+            $commentInfo = $info ?  json_decode($info,true) : $this->getCommentInfo($commentedId,$commentId);
+            if (!$this->getCheck($commentedId,$commentInfo)) {
+                $combine[$commentId] = [];
+            }else{
+                $combine[$commentId] = $commentInfo;
+            }
+        }
+        return $combine;
     }
 
     /**
@@ -123,8 +169,8 @@ class LiComment extends LiBase {
     }
 
     //检查是否能删除
-    private function deleteCheck ( $commentInfo, $actionUserId ) {
-        if ($this->isComment($commentInfo) && $this->isOriginId($commentInfo) && $this->isOperatorUser($commentInfo,$actionUserId)) {
+    private function deleteCheck ( $commentedId, $commentInfo, $actionUserId ) {
+        if ( $this->isComment($commentInfo) && $this->isOriginId($commentInfo) && $this->isOperatorUser($commentInfo,$actionUserId) && $this->isCommented($commentInfo, $commentedId) ) {
             return true;
         }else{
             $this->setLastError( $this->getBaseLastError() );
@@ -133,8 +179,8 @@ class LiComment extends LiBase {
     }
 
     //检查是否合法评论
-    private function getCheck ( $commentInfo ) {
-        if ( $this->isComment($commentInfo) && $this->isOriginId($commentInfo) ) {
+    private function getCheck ( $commentedId, $commentInfo ) {
+        if ( $this->isComment($commentInfo) && $this->isOriginId($commentInfo) && $this->isCommented($commentInfo, $commentedId) ) {
             return true;
         }else{
             $this->setLastError($this->getBaseLastError() );

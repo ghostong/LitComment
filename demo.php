@@ -65,5 +65,17 @@ $lc ->setRedisConfig( "192.168.31.246", 6379, "123@456@", 0 )
 
 
 // -------------------- 列表 --------------------
+//var_dump ( $lc->list()->timeLineCommentList( 12132,15770931962,4, "desc" ) ) ;
+//
+//var_dump ( $lc->list()->timeLineCommentList( 12132,1577093196,4, "desc" ) ) ;
+//
+//var_dump ( $lc->list()->timeLineCommentList( 12132,0,4, "asc" ) ) ;
+//
+//var_dump ( $lc->list()->timeLineCommentList( 12132,1577093218,4, "asc" ) ) ;
 
-$lc->list()->getNewestList( 12132 );
+//$lc->list()->setCommentList(12132);
+//
+//var_dump ( $lc->list()->likeLineCommentList(12132,0,5, "desc") );
+$lc->list()->setReplyList( 12132, "5e008831ee3be5.98876004" );
+
+var_dump ( $lc->list()->timeLineReplyList( 12132, "5e008831ee3be5.98876004",0,2,"desc"));

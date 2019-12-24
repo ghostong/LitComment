@@ -27,32 +27,86 @@ class LiReply extends LiBase {
         $this->tablePrefix = $tablePrefix;
     }
 
+    //获取错误信息
     public function getLastError(){
         return $this->replyLastError;
     }
 
+    //设置错误信息
     private function setLastError( $lastError ){
         $this->replyLastError = $lastError;
     }
 
-    //获取单个回复
-    public function getReply( $commentedId, $replyId ){
+    //评论信息的key
+    private function getReplyInfoKey( $replyId ){
+        return $this->redisKeyPrefix.":reply:info:".$replyId;
+    }
+
+    /**
+     * 获取单个评论
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @param string $replyId 回复ID
+     * @return array
+     */
+    public function getReplyInfo( $commentedId, $commentId, $replyId ){
+        $key = $this->getReplyInfoKey($replyId);
+        $redisRes = $this->redisClient->get($key);
+        if ($redisRes){
+            $replyIdInfo = json_decode($redisRes,true);
+            if ( !$this->getCheck( $commentId,$replyIdInfo ) ){
+                return [];
+            }else{
+                return $replyIdInfo;
+            }
+        }else{
+            return $this->setReplyInfo( $commentedId, $commentId, $replyId );
+        }
+    }
+
+    /**
+     * 设置单个回复缓存
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @param string $replyId 回复ID
+     * @return array
+     */
+    public function setReplyInfo( $commentedId, $commentId, $replyId ){
         $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
         $replyIdInfo = $this->mySqlClient->GetOne( $tableName, 'comment_id = ?', $replyId) ;
-        if (!$this->getCheck($replyIdInfo)){
+        if (!$this->getCheck( $commentId, $replyIdInfo )){
             return [];
         }
         if($replyIdInfo){
             $replyIdInfo = $this->dbDataDecode($replyIdInfo);
-            return $replyIdInfo;
         }else{
-            return [];
+            $replyIdInfo = [];
         }
+        $this->redisClient->set($this->getReplyInfoKey($replyId),json_encode($replyIdInfo));
+        return $replyIdInfo;
+
     }
 
-    //获取多个回复
-    public function getReplies( ){
-
+    /**
+     * 获取单个评论
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @param array $replyIds 多个回复ID
+     * @return array
+     */
+    public function getReplyInfos( $commentedId, $commentId, $replyIds = array() ){
+        $redisKeys = array_map(function( $replyId ){ return $this->getReplyInfoKey($replyId); },$replyIds);
+        $replyInfos = $this->redisClient->mGet($redisKeys);
+        $combine = array_combine($replyIds,$replyInfos);
+        foreach ( $combine as $replyId => $info ) {
+            $replyInfo = $info ?  json_decode($info,true) : $this->getReplyInfo($commentedId,$replyId);
+            if( !$this->getCheck( $commentId, $replyInfo ) ) {
+                $combine[$replyId] = [];
+            }else{
+                $combine[$replyId] = $replyInfo;
+            }
+        }
+        return $combine;
     }
 
     /**
@@ -87,10 +141,17 @@ class LiReply extends LiBase {
         }
     }
 
-    //删除一个回复
-    public function del ( $commentedId, $replyId, $actionUserId ){
-        $replyInfo = $this->getReply( $commentedId, $replyId );
-        if ( ! $this->deleteCheck($replyInfo,$actionUserId) ) {
+    /**
+     * 删除一个回复
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @param string $replyId 回复ID
+     * @param string $actionUserId 操作的用户ID
+     * @return bool
+     */
+    public function del ( $commentedId, $commentId, $replyId, $actionUserId ){
+        $replyInfo = $this->getReplyInfo( $commentedId, $commentId, $replyId );
+        if ( ! $this->deleteCheck( $commentId, $replyInfo,$actionUserId ) ) {
             return false;
         }
         $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($replyId));
@@ -103,8 +164,8 @@ class LiReply extends LiBase {
     }
 
     //检查是否能删除
-    private function deleteCheck ( $replyInfo, $actionUserId ) {
-        if ($this->isReply($replyInfo) && $this->isOriginId($replyInfo) && $this->isOperatorUser($replyInfo,$actionUserId)) {
+    private function deleteCheck ( $commentId, $replyInfo, $actionUserId ) {
+        if ($this->isReply($replyInfo) && $this->isOriginId($replyInfo) && $this->isOperatorUser($replyInfo,$actionUserId) && $this->isParentId($replyInfo,$commentId)) {
             return true;
         }else{
             $this->setLastError( $this->getBaseLastError() );
@@ -113,8 +174,8 @@ class LiReply extends LiBase {
     }
 
     //检查是否合法评论
-    private function getCheck ( $replyInfo ) {
-        if ( $this->isReply($replyInfo) && $this->isOriginId($replyInfo) ) {
+    private function getCheck ( $commentId, $replyInfo ) {
+        if ( $this->isReply($replyInfo) && $this->isOriginId($replyInfo) && $this->isParentId($replyInfo,$commentId)) {
             return true;
         }else{
             $this->setLastError($this->getBaseLastError() );

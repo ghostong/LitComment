@@ -90,6 +90,26 @@ class LiBase {
         }
     }
 
+    //检查 被评论物
+    protected function isCommented( $commentInfo, $commentedId){
+        if ( $commentInfo["commented_id"] == $commentedId ) {
+            return true;
+        }else{
+            $this->setBaseLastError( "被评论物ID:".$commentInfo["commented_id"]."不等于传入的被评论物ID:".$commentedId);
+            return false;
+        }
+    }
+
+    //检查 是否所属评论ID
+    protected function isParentId( $commentInfo, $commentId){
+        if ( $commentInfo["parent_id"] == $commentId ) {
+            return true;
+        }else{
+            $this->setBaseLastError( "评论ID:".$commentInfo["parent_id"]."不等于传入的评论ID:".$commentId);
+            return false;
+        }
+    }
+
     //对写入数据进行编码
     protected function dbDataEncode( $data ){
         $extArray = json_decode($data["expands"],true);
@@ -138,5 +158,11 @@ class LiBase {
 
     protected function setBaseLastError( $lastError ){
         $this->baseLastError = $lastError;
+    }
+
+    protected function getRedisScore( $score, $maxInt, $i ){
+        $score = floatval( $score.".".$i );
+        $num = intval("1".str_repeat(0,strlen($maxInt))) ;
+        return $score*$num;
     }
 }

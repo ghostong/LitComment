@@ -63,13 +63,9 @@ class Init {
         return $this;
     }
 
-    // 设置一个 redis 连接或者通过配置生成一个 redis 连接
-    public function setRedisClient( $redisClient = false ){
-        if ( $redisClient == false ) {
-            $this->redisClient = new LiRedis( $this->redisHost, $this->redisPort, $this->redisAuth, $this->redisDb );
-        }else{
-            $this->redisClient = $redisClient;
-        }
+    // 通过配置生成一个 redis 连接
+    public function setRedisClient(){
+        $this->redisClient = new LiRedis( $this->redisHost, $this->redisPort, $this->redisAuth, $this->redisDb );
         return $this;
     }
 
@@ -84,13 +80,9 @@ class Init {
         return $this;
     }
 
-    // 设置一个 mysql 连接或者通过配置生成一个 mysql 连接
-    public function setMySqlClient(  $mySqlClient = false ){
-        if ( $mySqlClient == false ) {
-            $this->mySqlClient = new LiMySQL( $this->mySqlHost, $this->mySqlPort, $this->mySqlUserName, $this->mySqlPassWord, $this->mySqlDbName, $this->mySqlCharSet );
-        }else{
-            $this->mySqlClient = $mySqlClient;
-        }
+    // 通过配置生成一个 mysql 连接
+    public function setMySqlClient(){
+        $this->mySqlClient = new LiMySQL( $this->mySqlHost, $this->mySqlPort, $this->mySqlUserName, $this->mySqlPassWord, $this->mySqlDbName, $this->mySqlCharSet );
         return $this;
     }
 
@@ -151,7 +143,7 @@ class Init {
     //列表
     public function list () {
         if (!is_object($this->listObj)) {
-            $this->listObj = new LiList( $this->originId, $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
+            $this->listObj = new LiList( $this->originId, $this->comment(), $this->reply(), $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
         }
         return $this->listObj;
     }
