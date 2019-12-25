@@ -113,6 +113,14 @@ class demo{
         return $result;
     }
 
+    //获取回复时产生的错误
+    public function getReplyError(){
+        echo __FUNCTION__ . ":获取评论时产生的错误\n";
+        $error = $this->comment->reply()->getLastError();
+        var_dump($error);
+        return $error;
+    }
+
     //初始化评论列表
     public function setCommentList(){
         echo __FUNCTION__ . ":初始化评论列表\n";
@@ -178,12 +186,46 @@ class demo{
             $this->commentedId, //被评物的ID
             $commentId, //评论ID
             0,
-            2,
+            20,
             "asc"
         );
         var_dump ($list);
         return $list;
     }
+
+    //设置评论点赞数量
+    public function setCommentLike( $commentId , $num ){
+        echo __FUNCTION__ . ":设置评论点赞数量\n";
+        $result = $this->comment->comment()->setLikeNum (
+            $this->commentedId,
+            $commentId,
+            $num
+        );
+        var_dump ($result);
+        return $result;
+    }
+
+    //删除所有评论
+    public function delAllComment () {
+        echo __FUNCTION__ . ":删除所有评论\n";
+        $result = $this->comment->comment()->delAll(
+            $this->commentedId
+        );
+        var_dump ($result);
+        return $result;
+    }
+
+    //删除所有回复
+    public function delAllReply( $commentId ){
+        echo __FUNCTION__ . ":删除所有回复\n";
+        $result = $this->comment->reply()->delAll(
+            $this->commentedId,
+            $commentId
+        );
+        var_dump($result);
+        return $result;
+    }
+
 }
 
 
@@ -198,7 +240,16 @@ $demo = new demo();
 //$demo->getComment( $commentId );
 
 //删除一条评论
-//$demo->delComment( $commentId );
+//$demo->delComment( "5e01069ed109b3.32294299" );
+
+//删除所有评论
+//$demo->delAllComment();
+
+//设置评论点赞数量
+//$demo->setCommentLike( "5e010d27f205f8.94025250" , 100);
+
+//设置评论回复数量
+//$demo->setReplyLike( "5e010d27f205f8.94025250" , 100);
 
 //获取评论时产生的错误
 //$demo->getCommentError();
@@ -206,19 +257,27 @@ $demo = new demo();
 // -------------------- 回复 --------------------
 
 //增加一个回复
-//$replyId = $demo->addReply("5e01069ed109b3.32294299");
+//$replyId = $demo->addReply("5e02501b58b086.35378135");
 
 //获取回复
 //$demo->getReply( "5e01069ed109b3.32294299", $replyId);
 
 //删除回复
-//$demo->delReply( "5e01069ed109b3.32294299", $replyId );
+//$demo->delReply( "5e01069ed109b3.32294299", "5e010a14aec762.18053372" );
+
+//删除所有回复
+//$demo->delAllReply("5e01069ed109b3.32294299");
+
+//$demo->getReplyError();
 
 
 // -------------------- 列表 --------------------
 
 //初始化评论列表
 //$demo->setCommentList();
+
+//设置评论被点赞数量
+//$demo->setCommentLike("5e025835735f43.71367799",rand(1000,9999));
 
 //获取评论时间序列表
 //$demo->newCommentList();
@@ -235,3 +294,4 @@ $demo = new demo();
 
 //获取回复时间序列表
 //$demo->newReplyList( "5e01069ed109b3.32294299" );
+

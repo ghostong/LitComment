@@ -42,11 +42,12 @@ class LiReply extends LiBase {
         $key = $this->getReplyInfoKey($replyId);
         $redisRes = $this->getRedisClient()->get($key);
         if ($redisRes){
-            $replyIdInfo = json_decode($redisRes,true);
-            if ( !$this->getCheck( $commentId,$replyIdInfo ) ){
+            $replyInfo = json_decode($redisRes,true);
+            if ( !empty($replyInfo) && !$this->getCheck( $commentId,$replyInfo ) ){
                 return [];
             }else{
-                return $replyIdInfo;
+                $replyInfo["reply_id"] = $replyInfo["comment_id"];
+                return $replyInfo;
             }
         }else{
             return $this->setReplyInfo( $commentedId, $commentId, $replyId );
@@ -61,7 +62,7 @@ class LiReply extends LiBase {
      * @return array
      */
     public function setReplyInfo( $commentedId, $commentId, $replyId ){
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($commentedId));
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $replyIdInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $replyId) ;
         if (!$this->getCheck( $commentId, $replyIdInfo )){
             return [];
@@ -92,6 +93,7 @@ class LiReply extends LiBase {
             if( !$this->getCheck( $commentId, $replyInfo ) ) {
                 $combine[$replyId] = [];
             }else{
+                $replyInfo["reply_id"] = $replyInfo["comment_id"];
                 $combine[$replyId] = $replyInfo;
             }
         }
@@ -110,6 +112,11 @@ class LiReply extends LiBase {
      * @return string
      */
     public function add ( $commentedId, $commentedUser, $commentId, $userId, $targetUser, $content, $expands ){
+        $commentInfo = $this->getComment()->getCommentInfo( $commentedId, $commentId );
+        if ( empty($commentInfo) ){
+            $this->setLastError("评论ID:".$commentId." 不存在!");
+            return 0;
+        }
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $data = [
             "origin_id"  => $this->originId,
@@ -123,6 +130,7 @@ class LiReply extends LiBase {
         ];
         $insertData = $this->dbDataEncode($data);
         if ( $this->getMySqlClient()->Add( $tableName, $insertData ) ) {
+            $this->onAdd( $this->getReplyInfo( $commentedId, $insertData["parent_id"], $insertData["comment_id"]));
             return $insertData["comment_id"];
         }else{
             $this->setLastError( $this->getMySqlClient()->LastError() );
@@ -143,9 +151,28 @@ class LiReply extends LiBase {
         if ( ! $this->deleteCheck( $commentId, $replyInfo,$actionUserId ) ) {
             return false;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($replyId));
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $replyId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'comment_id = ? limit 1', $replyId );
         if ($rowCount > 0) {
+            $this->onDel( $replyInfo );
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    /**
+     * 删除所有回复
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @return bool
+     */
+    public function delAll ( $commentedId, $commentId ){
+        $allReply = $this->getList()->getAllReply( $commentId );
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $rowCount = $this->getMySqlClient()->Del ( $tableName, 'origin_id = ? and commented_id = ? and parent_id = ? ', $this->originId, $this->getCommentedId($commentedId), $commentId );
+        if ( $rowCount > 0 ) {
+            $this->onDelAll( $commentedId, $commentId, $allReply );
             return true;
         }else{
             return false;
@@ -170,5 +197,39 @@ class LiReply extends LiBase {
             $this->setLastError($this->getBaseLastError() );
             return false;
         }
+    }
+
+    //hook
+    private function onAdd ( $replyInfo ) {
+        //修改评论的回复数
+        $replyNum = $this->getList()->getReplyNum($replyInfo["parent_id"]) + 1;
+        $this->getComment()->setReplyNum($replyInfo["commented_id"], $replyInfo["parent_id"], $replyNum);
+        //重置回复有关的列表
+        $this->getList()->setReplyList( $replyInfo["commented_id"], $replyInfo["parent_id"] );
+    }
+
+    private function onDel ( $replyInfo ) {
+        //删除回复对应的redis key
+        $key = $this->getReplyInfoKey($replyInfo["comment_id"]);
+        $this->getRedisClient()->del($key);
+        //修改评论的回复数
+        $replyNum = $this->getList()->getReplyNum($replyInfo["parent_id"]) - 1;
+        if($replyNum >= 0) {
+            $this->getComment()->setReplyNum($replyInfo["commented_id"], $replyInfo["parent_id"], $replyNum);
+        }
+        //重置回复有关的列表
+        $this->getList()->setReplyList( $replyInfo["commented_id"], $replyInfo["parent_id"] );
+    }
+
+    private function onDelAll ( $commentedId, $commentId, $allReply ) {
+        //删除回复对应的redis key
+        foreach ($allReply as $replyId=>$val) {
+            $key = $this->getReplyInfoKey($replyId);
+            $this->getRedisClient()->del($key);
+        }
+        //修改评论的回复数
+        $this->getComment()->setReplyNum($commentedId, $commentId, 0);
+        //重置回复有关的列表
+        $this->getList()->setReplyList( $commentedId, $commentId);
     }
 }

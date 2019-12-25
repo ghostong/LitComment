@@ -123,7 +123,7 @@ class LiBase {
 
     //是否是评论
     protected function isReply( $commentInfo ){
-        if ( $commentInfo["parent_id"] != "0" ) {
+        if ( isset($commentInfo["parent_id"]) && $commentInfo["parent_id"] != "0" ) {
             return true;
         }else{
             $this->setBaseLastError( $commentInfo["comment_id"]." 数据错误,此id不是回复" );
@@ -207,7 +207,7 @@ class LiBase {
     protected function tableName( $tablePrefix, $commentedId ){
         $commentedId = $this->getCommentedId($commentedId);
         $tabNum = substr($commentedId,-1);
-        echo $tablePrefix.$tabNum.":";
+        echo $tablePrefix.$tabNum.": \n";
         //TODO
         return $tablePrefix;
     }
