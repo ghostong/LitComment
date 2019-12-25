@@ -18,12 +18,12 @@ class demo{
 
     function __construct(){
         //初始化项目
-        $lc = new \Lit\Comment\Init(1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB");
-        $lc->setRedisConfig("192.168.31.246", 6379, "123@456@", 0)
-            ->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4")
-            ->setMySqlTablePrefix("comment")
-            ->setRedisKeyPrefix("lc");
-        $this->comment = $lc;
+        $lComment = new \Lit\Comment\Init(1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB");
+        $lComment->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
+        $lComment->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
+        $lComment->setMySqlTablePrefix("comment");
+        $lComment->setRedisKeyPrefix("lc");
+        $this->comment = $lComment;
     }
 
     //增加一条评论
@@ -226,6 +226,23 @@ class demo{
         return $result;
     }
 
+    //获取被评论物评论数量
+    public function getCommentNum () {
+        $result = $this->comment->list()->getCommentNum(
+            $this->commentedId
+        );
+        var_dump($result);
+        return $result;
+    }
+
+    //获取评论回复数量
+    public function getReplyNum ( $commentId ) {
+        $result = $this->comment->list()->getReplyNum(
+            $commentId
+        );
+        var_dump($result);
+        return $result;
+    }
 }
 
 
@@ -288,10 +305,15 @@ $demo = new demo();
 //获取回复数序列表
 //$demo->replyCommentList();
 
-
 //初始化回复列表
 //$demo->setReplyList( "5e01069ed109b3.32294299");
 
 //获取回复时间序列表
 //$demo->newReplyList( "5e01069ed109b3.32294299" );
+
+//获取被评论物评论数量
+//$demo->getCommentNum();
+
+//获取评论回复数量
+//$demo->getReplyNum("5e025d009770a7.32368736");
 

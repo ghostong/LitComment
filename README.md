@@ -70,3 +70,18 @@ $replyId = $lComment->reply()->add(
 //其他回复相关 参考 demo.php
 
 ````
+
+### 列表部分
+````php
+<?php
+//获取评论时间序列表
+$list = $lComment->list()->timeLineCommentList(
+    $this->commentedId, //被评物的ID
+    0, //索引开始
+    4, //分页大小
+    "desc"  //排序 asc|desc
+);
+
+//其他列表相关 参考 demo.php
+
+````
