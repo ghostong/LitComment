@@ -10,21 +10,10 @@ namespace Lit\Comment;
 
 class LiReply extends LiBase {
 
-    private $redisClient;
-    private $mySqlClient;
-    private $tablePrefix;
-    private $redisKeyPrefix;
-
-    private $originId;
     private $replyLastError;
 
-    function  __construct( $originId, $redisClient, $mySqlClient,  $redisKeyPrefix, $tablePrefix ){
+    function  __construct( $originId ){
         parent::__construct($originId);
-        $this->originId = $originId;
-        $this->redisClient = $redisClient;
-        $this->mySqlClient = $mySqlClient;
-        $this->redisKeyPrefix = $redisKeyPrefix;
-        $this->tablePrefix = $tablePrefix;
     }
 
     //获取错误信息
@@ -39,7 +28,7 @@ class LiReply extends LiBase {
 
     //评论信息的key
     private function getReplyInfoKey( $replyId ){
-        return $this->redisKeyPrefix.":reply:info:".$replyId;
+        return $this->getRedisKeyPrefix().":reply:info:".$replyId;
     }
 
     /**
@@ -51,7 +40,7 @@ class LiReply extends LiBase {
      */
     public function getReplyInfo( $commentedId, $commentId, $replyId ){
         $key = $this->getReplyInfoKey($replyId);
-        $redisRes = $this->redisClient->get($key);
+        $redisRes = $this->getRedisClient()->get($key);
         if ($redisRes){
             $replyIdInfo = json_decode($redisRes,true);
             if ( !$this->getCheck( $commentId,$replyIdInfo ) ){
@@ -72,8 +61,8 @@ class LiReply extends LiBase {
      * @return array
      */
     public function setReplyInfo( $commentedId, $commentId, $replyId ){
-        $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
-        $replyIdInfo = $this->mySqlClient->GetOne( $tableName, 'comment_id = ?', $replyId) ;
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($commentedId));
+        $replyIdInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $replyId) ;
         if (!$this->getCheck( $commentId, $replyIdInfo )){
             return [];
         }
@@ -82,7 +71,7 @@ class LiReply extends LiBase {
         }else{
             $replyIdInfo = [];
         }
-        $this->redisClient->set($this->getReplyInfoKey($replyId),json_encode($replyIdInfo));
+        $this->getRedisClient()->set($this->getReplyInfoKey($replyId),json_encode($replyIdInfo));
         return $replyIdInfo;
 
     }
@@ -96,7 +85,7 @@ class LiReply extends LiBase {
      */
     public function getReplyInfos( $commentedId, $commentId, $replyIds = array() ){
         $redisKeys = array_map(function( $replyId ){ return $this->getReplyInfoKey($replyId); },$replyIds);
-        $replyInfos = $this->redisClient->mGet($redisKeys);
+        $replyInfos = $this->getRedisClient()->mGet($redisKeys);
         $combine = array_combine($replyIds,$replyInfos);
         foreach ( $combine as $replyId => $info ) {
             $replyInfo = $info ?  json_decode($info,true) : $this->getReplyInfo($commentedId,$commentId,$replyId);
@@ -121,7 +110,7 @@ class LiReply extends LiBase {
      * @return string
      */
     public function add ( $commentedId, $commentedUser, $commentId, $userId, $targetUser, $content, $expands ){
-        $tableName = $this->tableName($this->tablePrefix, $commentedId);
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $data = [
             "origin_id"  => $this->originId,
             "commented_id" => $commentedId,
@@ -133,10 +122,10 @@ class LiReply extends LiBase {
             "expands" => $expands
         ];
         $insertData = $this->dbDataEncode($data);
-        if ( $this->mySqlClient->Add( $tableName, $insertData ) ) {
+        if ( $this->getMySqlClient()->Add( $tableName, $insertData ) ) {
             return $insertData["comment_id"];
         }else{
-            $this->setLastError( $this->mySqlClient->LastError() );
+            $this->setLastError( $this->getMySqlClient()->LastError() );
             return 0;
         }
     }
@@ -154,8 +143,8 @@ class LiReply extends LiBase {
         if ( ! $this->deleteCheck( $commentId, $replyInfo,$actionUserId ) ) {
             return false;
         }
-        $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($replyId));
-        $rowCount = $this->mySqlClient->Del ( $tableName, 'comment_id = ? limit 1', $replyId );
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($replyId));
+        $rowCount = $this->getMySqlClient()->Del ( $tableName, 'comment_id = ? limit 1', $replyId );
         if ($rowCount > 0) {
             return true;
         }else{

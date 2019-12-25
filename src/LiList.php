@@ -1,6 +1,5 @@
 <?php
 /**
- * Created by IntelliJ IDEA.
  * User: ghost
  * Date: 2019-12-23
  * Time: 17:28
@@ -10,25 +9,12 @@ namespace Lit\Comment;
 
 
 class LiList extends LiBase {
-    private $redisClient;
-    private $mySqlClient;
-    private $tablePrefix;
-    private $redisKeyPrefix;
-    private $comment;
-    private $reply;
 
-    private $originId;
     private $listLastError;
 
-    function  __construct( $originId, $comment, $reply, $redisClient, $mySqlClient,  $redisKeyPrefix, $tablePrefix ){
+    function  __construct( $originId ){
         parent::__construct($originId);
         $this->originId = $originId;
-        $this->comment = $comment;
-        $this->reply = $reply;
-        $this->redisClient = $redisClient;
-        $this->mySqlClient = $mySqlClient;
-        $this->redisKeyPrefix = $redisKeyPrefix;
-        $this->tablePrefix = $tablePrefix;
     }
 
     public function getLastError(){
@@ -41,22 +27,18 @@ class LiList extends LiBase {
 
     //--------------- 评论部分 ---------------//
 
-    private function comment(){
-        return $this->comment;
-    }
-
     public function timeLineCommentKey( $commentedId ){
-        $key = $this->redisKeyPrefix.":comment:list:timeLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":comment:list:timeLine:".$commentedId;
         return $key;
     }
 
     public function likeLineCommentKey ( $commentedId ){
-        $key = $this->redisKeyPrefix.":comment:list:likeLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":comment:list:likeLine:".$commentedId;
         return $key;
     }
 
     public function replyLineCommentKey ( $commentedId ){
-        $key = $this->redisKeyPrefix.":comment:list:replyLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":comment:list:replyLine:".$commentedId;
         return $key;
     }
 
@@ -79,7 +61,7 @@ class LiList extends LiBase {
         }
         $data = $this->getCommentList( $key, $order, $start, $end, $pageSize);
         if ($data) {
-            return  $this->comment()->getCommentInfos($commentedId,array_keys($data));
+            return  $this->getComment()->getCommentInfos($commentedId,array_keys($data));
         }else{
             return [];
         }
@@ -104,7 +86,7 @@ class LiList extends LiBase {
         }
         $data = $this->getCommentList( $key, $order, $start, $end, $pageSize);
         if ($data) {
-            return  $this->comment()->getCommentInfos($commentedId,array_keys($data));
+            return  $this->getComment()->getCommentInfos($commentedId,array_keys($data));
         }else{
             return [];
         }
@@ -129,7 +111,7 @@ class LiList extends LiBase {
         }
         $data = $this->getCommentList( $key, $order, $start, $end, $pageSize);
         if ($data) {
-            return  $this->comment()->getCommentInfos($commentedId,array_keys($data));
+            return  $this->getComment()->getCommentInfos($commentedId,array_keys($data));
         }else{
             return [];
         }
@@ -138,9 +120,9 @@ class LiList extends LiBase {
     //评论列表
     public function getCommentList( $key, $order, $start, $end, $pageSize ){
         if ($order == "desc"){
-            $list = $this->redisClient->zRevRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
+            $list = $this->getRedisClient()->zRevRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
         }else{
-            $list = $this->redisClient->zRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
+            $list = $this->getRedisClient()->zRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
         }
         return $list;
     }
@@ -157,32 +139,28 @@ class LiList extends LiBase {
         $i = 0;
         $count = count($data);
         foreach ($data as $val) {
-            $this->redisClient->zAdd($timeLineKey.":tmp", $this->getRedisScore($val["createtime"],$count,$i),$val["comment_id"]);
-            $this->redisClient->zAdd($likeNumKey.":tmp", $this->getRedisScore($val["like_num"],$count,$i), $val["comment_id"]);
-            $this->redisClient->zAdd($replyNumKey.":tmp", $this->getRedisScore($val["reply_num"],$count,$i), $val["comment_id"]);
+            $this->getRedisClient()->zAdd($timeLineKey.":tmp", $this->getRedisScore($val["createtime"],$count,$i),$val["comment_id"]);
+            $this->getRedisClient()->zAdd($likeNumKey.":tmp", $this->getRedisScore($val["like_num"],$count,$i), $val["comment_id"]);
+            $this->getRedisClient()->zAdd($replyNumKey.":tmp", $this->getRedisScore($val["reply_num"],$count,$i), $val["comment_id"]);
             $i ++;
         }
-        $this->redisClient->rename($timeLineKey.":tmp",$timeLineKey);
-        $this->redisClient->rename($likeNumKey.":tmp",$likeNumKey);
-        $this->redisClient->rename($replyNumKey.":tmp",$replyNumKey);
+        $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
+        $this->getRedisClient()->rename($likeNumKey.":tmp",$likeNumKey);
+        $this->getRedisClient()->rename($replyNumKey.":tmp",$replyNumKey);
     }
 
     //获取评论列表
     private function getCommentListByDb( $commentedId ){
-        $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($commentedId));
         $sql = "select comment_id,like_num,reply_num,createtime from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = 0";
-        $allComment = $this->mySqlClient->fetchAll( $sql );
+        $allComment = $this->getMySqlClient()->fetchAll( $sql );
         return $allComment;
     }
 
     //--------------- 回复部分 ---------------//
 
-    private function reply(){
-        return $this->reply;
-    }
-
     public function timeLineReplyKey( $commentId ){
-        $key = $this->redisKeyPrefix.":reply:list:timeLine:".$commentId;
+        $key = $this->getRedisKeyPrefix().":reply:list:timeLine:".$commentId;
         return $key;
     }
 
@@ -206,7 +184,7 @@ class LiList extends LiBase {
         }
         $data = $this->getReplyList( $key, $order, $start, $end, $pageSize);
         if ($data) {
-            return  $this->reply()->getReplyInfos($commentedId,$commentId,array_keys($data));
+            return  $this->getReply()->getReplyInfos($commentedId,$commentId,array_keys($data));
         }else{
             return [];
         }
@@ -215,9 +193,9 @@ class LiList extends LiBase {
     //评论列表
     public function getReplyList( $key, $order, $start, $end, $pageSize ){
         if ($order == "desc"){
-            $list = $this->redisClient->zRevRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
+            $list = $this->getRedisClient()->zRevRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
         }else{
-            $list = $this->redisClient->zRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
+            $list = $this->getRedisClient()->zRangeByScore( $key, $start , $end, [ "withscores" => true, "limit" => [ 0, $pageSize] ]);
         }
         return $list;
     }
@@ -233,18 +211,18 @@ class LiList extends LiBase {
         $i = 0;
         $count = count($data);
         foreach ($data as $val) {
-            $this->redisClient->zAdd($timeLineKey.":tmp", $this->getRedisScore($val["createtime"],$count,$i),$val["comment_id"]);
+            $this->getRedisClient()->zAdd($timeLineKey.":tmp", $this->getRedisScore($val["createtime"],$count,$i),$val["comment_id"]);
             $i ++;
         }
-        $this->redisClient->rename($timeLineKey.":tmp",$timeLineKey);
+        $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
     }
 
     //回复部分
     private function getReplyListByDb( $commentedId, $commentId ){
-        $tableName = $this->tableName($this->tablePrefix, $this->getCommentedId($commentedId));
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $this->getCommentedId($commentedId));
         $sql = "select comment_id,like_num,reply_num,createtime from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = '{$commentId}'";
         echo $sql;
-        $allReply = $this->mySqlClient->fetchAll( $sql );
+        $allReply = $this->getMySqlClient()->fetchAll( $sql );
         return $allReply;
     }
 

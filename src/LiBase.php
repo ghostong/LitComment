@@ -13,12 +13,73 @@ use Lit\Drivers\LiRedis;
 
 class LiBase {
 
-    private $originId;
+    protected $originId;
     private $baseLastError;
+
+    private $redisClient;
+    private $mySqlClient;
+    private $tablePrefix;
+    private $redisKeyPrefix;
+
+    private $commentObj;
+    private $replyObj;
+    private $listObj;
 
     protected function __construct( $originId ){
         $this->originId = $originId;
     }
+
+    //连接配置
+    protected function getRedisClient () {
+        return $this->redisClient;
+    }
+    public function setRedisClient( $redisClient ){
+        $this->redisClient = $redisClient;
+    }
+
+    protected function getMySqlClient (){
+        return $this->mySqlClient;
+    }
+    public function setMySqlClient( $mySqlClient ){
+        $this->mySqlClient = $mySqlClient;
+    }
+
+    protected function getRedisKeyPrefix (){
+        return $this->redisKeyPrefix;
+    }
+    public function setRedisKeyPrefix ($redisKeyPrefix){
+        $this->redisKeyPrefix = $redisKeyPrefix;
+    }
+
+    protected function getMySqlTablePrefix () {
+        return $this->tablePrefix;
+    }
+    public function setMySqlTablePrefix ($tablePrefix) {
+        $this->tablePrefix = $tablePrefix;
+    }
+
+    //obj设置
+    protected function getReply(){
+        return $this->replyObj;
+    }
+    public function setReply($reply){
+        $this->replyObj = $reply;
+    }
+
+    protected function getComment(){
+        return $this->commentObj;
+    }
+    public function setComment($comment){
+        $this->commentObj = $comment;
+    }
+
+    protected function getList(){
+        return $this->listObj;
+    }
+    public function setList($list){
+        $this->listObj = $list;
+    }
+
 
     //生成唯一ID
     protected function getUniqId(){

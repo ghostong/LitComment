@@ -1,6 +1,5 @@
 <?php
 /**
- * Created by IntelliJ IDEA.
  * User: ghost
  * Date: 2019-12-21
  * Time: 17:23
@@ -8,10 +7,8 @@
 
 namespace Lit\Comment;
 
-use http\Exception;
 use Lit\Drivers\LiRedis;
 use Lit\Drivers\LiMySQL;
-use MongoDB\BSON\ObjectId;
 
 class Init {
 
@@ -19,6 +16,7 @@ class Init {
     private $redisClient = null;
     //mysql 客户端连接
     private $mySqlClient = null;
+
     //redis 评论key前缀
     private $redisKeyPrefix = "lc";
     //redis 评论数据库表前缀
@@ -38,8 +36,10 @@ class Init {
     private $mySqlDbName = "";
     private $mySqlCharSet = "";
 
+    //来源ID
     private $originId = "";
 
+    //各对象
     private $commentObj = "";
     private $replyObj = "";
     private $listObj = "";
@@ -127,7 +127,13 @@ class Init {
     //评论
     public function comment () {
         if (!is_object($this->commentObj)){
-            $this->commentObj = new LiComment( $this->originId, $this->getRedisClient(), $this->getMySqlClient(),  $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix() );
+            $this->commentObj = new LiComment( $this->originId );
+            $this->commentObj->setRedisClient( $this->getRedisClient() );
+            $this->commentObj->setMySqlClient( $this->getMySqlClient() );
+            $this->commentObj->setRedisKeyPrefix( $this->getRedisKeyPrefix() );
+            $this->commentObj->setMySqlTablePrefix( $this->getMySqlTablePrefix() );
+            $this->commentObj->setReply( $this->reply() );
+            $this->commentObj->setList( $this->list() );
         }
         return $this->commentObj;
     }
@@ -135,7 +141,13 @@ class Init {
     //回复
     public function reply () {
         if (!is_object($this->replyObj)) {
-            $this->replyObj = new LiReply( $this->originId, $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
+            $this->replyObj = new LiReply( $this->originId );
+            $this->replyObj->setRedisClient( $this->getRedisClient() );
+            $this->replyObj->setMySqlClient( $this->getMySqlClient() );
+            $this->replyObj->setRedisKeyPrefix( $this->getRedisKeyPrefix() );
+            $this->replyObj->setMySqlTablePrefix( $this->getMySqlTablePrefix() );
+            $this->replyObj->setComment( $this->comment() );
+            $this->replyObj->setList( $this->list() );
         }
         return $this->replyObj;
     }
@@ -143,7 +155,13 @@ class Init {
     //列表
     public function list () {
         if (!is_object($this->listObj)) {
-            $this->listObj = new LiList( $this->originId, $this->comment(), $this->reply(), $this->getRedisClient(), $this->getMySqlClient(), $this->getRedisKeyPrefix(), $this->getMySqlTablePrefix());
+            $this->listObj = new LiList( $this->originId, $this->comment(), $this->reply() );
+            $this->listObj->setRedisClient( $this->getRedisClient() );
+            $this->listObj->setMySqlClient( $this->getMySqlClient() );
+            $this->listObj->setRedisKeyPrefix( $this->getRedisKeyPrefix() );
+            $this->listObj->setMySqlTablePrefix( $this->getMySqlTablePrefix() );
+            $this->listObj->setReply( $this->reply() );
+            $this->listObj->setComment( $this->comment() );
         }
         return $this->listObj;
     }
