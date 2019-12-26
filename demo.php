@@ -17,12 +17,22 @@ class demo{
     private $targetUser =  888;
 
     function __construct(){
+
         //初始化项目
-        $lComment = new \Lit\Comment\Init(1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB");
-        $lComment->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
-        $lComment->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
-        $lComment->setMySqlTablePrefix("comment");
-        $lComment->setRedisKeyPrefix("lc");
+        $lComment = new \Lit\Comment\Init();
+
+        //增加权限
+        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 1);
+        $lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
+
+        //配置项目
+        $lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
+        $lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
+        $lComment->config()->setMySqlTablePrefix("comment");
+        $lComment->config()->setRedisKeyPrefix("lc");
+
+        //启动项目
+        $lComment->start( 1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB" );
         $this->comment = $lComment;
     }
 
@@ -37,7 +47,6 @@ class demo{
             json_encode(["userName" => "笑哈哈", "url" => "https://baidu.com"])
         );
         var_dump($commentId);
-        return $commentId;
     }
 
     //获取一条评论的信息
@@ -48,7 +57,6 @@ class demo{
             $commentId //评论ID
         );
         var_dump ($commentInfo);
-        return $commentInfo;
     }
 
     //删除一条评论
@@ -60,7 +68,6 @@ class demo{
             $this->userId //评论所有人或者评论发起人
         );
         var_dump ($result);
-        return $result;
     }
 
     //获取评论时产生的错误
@@ -68,7 +75,6 @@ class demo{
         echo __FUNCTION__ . ":获取评论时产生的错误\n";
         $error = $this->comment->comment()->getLastError();
         var_dump($error);
-        return $error;
     }
 
 
@@ -85,7 +91,6 @@ class demo{
             json_encode(["aa"=>11])
         );
         var_dump ($replyId);
-        return $replyId;
     }
 
     //获取回复
@@ -97,7 +102,6 @@ class demo{
             $replyId //回复ID
         );
         var_dump ($replyInfo);
-        return $replyInfo;
     }
 
     //删除回复
@@ -110,7 +114,6 @@ class demo{
             $this->commentedUser //回复所有人或者评论发起人
         );
         var_dump($result);
-        return $result;
     }
 
     //获取回复时产生的错误
@@ -118,7 +121,6 @@ class demo{
         echo __FUNCTION__ . ":获取评论时产生的错误\n";
         $error = $this->comment->reply()->getLastError();
         var_dump($error);
-        return $error;
     }
 
     //初始化评论列表
@@ -139,7 +141,6 @@ class demo{
             "desc"  //排序 asc|desc
         );
         var_dump ($list);
-        return $list;
     }
 
     //获取点赞数序列表
@@ -152,7 +153,6 @@ class demo{
             "desc"  //排序 asc|desc
         );
         var_dump ($list);
-        return $list;
     }
 
     //获取回复数序列表
@@ -165,7 +165,6 @@ class demo{
             "desc"  //排序 asc|desc
         );
         var_dump ($list);
-        return $list;
     }
 
     //初始化回复列表
@@ -176,7 +175,6 @@ class demo{
             $commentId //评论ID
         );
         var_dump ($list);
-        return $list;
     }
 
     //获取回复时间序列表
@@ -190,7 +188,6 @@ class demo{
             "asc"
         );
         var_dump ($list);
-        return $list;
     }
 
     //设置评论点赞数量
@@ -202,7 +199,6 @@ class demo{
             $num
         );
         var_dump ($result);
-        return $result;
     }
 
     //删除所有评论
@@ -212,7 +208,6 @@ class demo{
             $this->commentedId
         );
         var_dump ($result);
-        return $result;
     }
 
     //删除所有回复
@@ -223,25 +218,22 @@ class demo{
             $commentId
         );
         var_dump($result);
-        return $result;
     }
 
     //获取被评论物评论数量
     public function getCommentNum () {
-        $result = $this->comment->list()->getCommentNum(
+        $result = $this->comment->comment()->getCommentNum(
             $this->commentedId
         );
         var_dump($result);
-        return $result;
     }
 
     //获取评论回复数量
     public function getReplyNum ( $commentId ) {
-        $result = $this->comment->list()->getReplyNum(
+        $result = $this->comment->reply()->getReplyNum(
             $commentId
         );
         var_dump($result);
-        return $result;
     }
 }
 
@@ -274,7 +266,7 @@ $demo = new demo();
 // -------------------- 回复 --------------------
 
 //增加一个回复
-//$replyId = $demo->addReply("5e02501b58b086.35378135");
+//$replyId = $demo->addReply("5e0380dc039049.39147680");
 
 //获取回复
 //$demo->getReply( "5e01069ed109b3.32294299", $replyId);
@@ -292,9 +284,6 @@ $demo = new demo();
 
 //初始化评论列表
 //$demo->setCommentList();
-
-//设置评论被点赞数量
-//$demo->setCommentLike("5e025835735f43.71367799",rand(1000,9999));
 
 //获取评论时间序列表
 //$demo->newCommentList();
@@ -315,5 +304,5 @@ $demo = new demo();
 //$demo->getCommentNum();
 
 //获取评论回复数量
-//$demo->getReplyNum("5e025d009770a7.32368736");
+//$demo->getReplyNum("5e0380dc039049.39147680");
 

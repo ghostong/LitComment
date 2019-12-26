@@ -28,7 +28,7 @@ class LiReply extends LiBase {
 
     //评论信息的key
     private function getReplyInfoKey( $replyId ){
-        return $this->getRedisKeyPrefix().":reply:info:".$replyId;
+        return $this->getRedisKeyPrefix().":".$this->originId.":reply:info:".$replyId;
     }
 
     /**
@@ -177,6 +177,15 @@ class LiReply extends LiBase {
         }else{
             return false;
         }
+    }
+
+    /**
+     * 获取评论回复数
+     * @param string $commentId 评论ID
+     * @return int
+     */
+    public function getReplyNum ($commentId) {
+        return $this->getList()->getReplyNum($commentId);
     }
 
     //检查是否能删除

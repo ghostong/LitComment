@@ -221,6 +221,7 @@ class LiBase {
         $this->baseLastError = $lastError;
     }
 
+    //redis评分的一个算法
     protected function getRedisScore( $score, $maxInt, $i ){
         $score = floatval( $score.".".$i );
         $num = intval("1".str_repeat(0,strlen($maxInt))) ;

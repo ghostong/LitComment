@@ -28,7 +28,7 @@ class LiComment extends LiBase {
 
     //评论信息的key
     private function getCommentInfoKey( $commentId ){
-        return $this->getRedisKeyPrefix().":comment:info:".$commentId;
+        return $this->getRedisKeyPrefix().":".$this->originId.":comment:info:".$commentId;
     }
 
     /**
@@ -165,6 +165,15 @@ class LiComment extends LiBase {
         }else{
             return false;
         }
+    }
+
+    /**
+     * 获取评论数
+     * @param string $commentedId 被评论物ID
+     * @return int
+     */
+    public function getCommentNum ( $commentedId ) {
+        return $this->getList()->getCommentNum($commentedId);
     }
 
     /**

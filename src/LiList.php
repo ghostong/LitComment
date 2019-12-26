@@ -28,17 +28,17 @@ class LiList extends LiBase {
     //--------------- 评论部分 ---------------//
 
     public function timeLineCommentKey( $commentedId ){
-        $key = $this->getRedisKeyPrefix().":comment:list:timeLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":".$this->originId.":comment:list:timeLine:".$commentedId;
         return $key;
     }
 
     public function likeLineCommentKey ( $commentedId ){
-        $key = $this->getRedisKeyPrefix().":comment:list:likeLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":".$this->originId.":comment:list:likeLine:".$commentedId;
         return $key;
     }
 
     public function replyLineCommentKey ( $commentedId ){
-        $key = $this->getRedisKeyPrefix().":comment:list:replyLine:".$commentedId;
+        $key = $this->getRedisKeyPrefix().":".$this->originId.":comment:list:replyLine:".$commentedId;
         return $key;
     }
 
