@@ -36,6 +36,85 @@ class LiConfig {
         $this->originId = $originId;
     }
 
+    public function getRuleExplain(){
+        return [
+            1 => "先发后审",  //评论先发布展示, 再审核
+            2 => "先审后发",  //评论必须审核后, 再展示
+            3 => "无需审核",  //忽略审核状态, 无论如何都展示
+            4 => "无需展示"   //忽略审核状态, 无论如何都不展示
+        ];
+    }
+
+    /**
+     * @return string
+     */
+    public function getRedisHost(){
+        return $this->redisHost;
+    }
+
+    /**
+     * @return string
+     */
+    public function getRedisPort(){
+        return $this->redisPort;
+    }
+
+    /**
+     * @return string
+     */
+    public function getRedisAuth(){
+        return $this->redisAuth;
+    }
+
+    /**
+     * @return string
+     */
+    public function getRedisDb(){
+        return $this->redisDb;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlHost(){
+        return $this->mySqlHost;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlPort(){
+        return $this->mySqlPort;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlUserName(){
+        return $this->mySqlUserName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlPassWord(){
+        return $this->mySqlPassWord;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlDbName(){
+        return $this->mySqlDbName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getMySqlCharSet(){
+        return $this->mySqlCharSet;
+    }
+
     // redis 设置
     public function setRedisConfig( $host = "127.0.0.1", $port = 6479, $auth = "", $db = 0 ){
         $this->redisHost = $host;

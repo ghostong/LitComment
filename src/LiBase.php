@@ -26,6 +26,9 @@ class LiBase {
     private $listObj;
 
     protected function __construct( $originId ){
+        if (null == $originId) {
+            throw new \Exception("originId 不能为空");
+        }
         $this->originId = $originId;
     }
 

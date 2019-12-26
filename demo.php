@@ -33,6 +33,7 @@ class demo{
 
         //启动项目
         $lComment->start( 1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB" );
+
         $this->comment = $lComment;
     }
 
@@ -243,7 +244,7 @@ $demo = new demo();
 // -------------------- 评论部分 --------------------
 
 //增加一条评论
-//$commentId = $demo->addComment();
+$commentId = $demo->addComment();
 
 //获取一条评论的信息
 //$demo->getComment( $commentId );

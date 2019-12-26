@@ -19,7 +19,6 @@ class Init {
 
     //来源ID
     private $originId;
-    private $listRule;
 
     //各对象
     private $commentObj;
@@ -30,21 +29,33 @@ class Init {
 
     public function start( $originId, $token ){
         $this->originId = $originId;
-//        if ( ! $this->ram()->checkAccess($token ) ) {
-//            throw new \Exception("Access Denied !", 0);
-//        }
+        if ( ! $this->ram()->checkAccess($originId,$token ) ) {
+            throw new \Exception("Access Denied !", 0);
+        }
+        var_dump ( $this->ram()->getInfo( $originId ) );
     }
 
     // 通过配置生成一个 redis 连接
     private function setRedisClient(){
-//        $redisConfig = $this->config();
-//        $this->redisClient = new LiRedis( $this->redisHost, $this->redisPort, $this->redisAuth, $this->redisDb );
+        $this->redisClient = new LiRedis(
+            $this->config()->getRedisHost(),
+            $this->config()->getRedisPort(),
+            $this->config()->getRedisAuth(),
+            $this->config()->getRedisDb()
+        );
         return $this;
     }
 
     // 通过配置生成一个 mysql 连接
     private function setMySqlClient(){
-//        $this->mySqlClient = new LiMySQL( $this->mySqlHost, $this->mySqlPort, $this->mySqlUserName, $this->mySqlPassWord, $this->mySqlDbName, $this->mySqlCharSet );
+        $this->mySqlClient = new LiMySQL(
+            $this->config()->getMySqlHost(),
+            $this->config()->getMySqlPort(),
+            $this->config()->getMySqlUserName(),
+            $this->config()->getMySqlPassWord(),
+            $this->config()->getMySqlDbName(),
+            $this->config()->getMySqlCharSet()
+        );
         return $this;
     }
 
