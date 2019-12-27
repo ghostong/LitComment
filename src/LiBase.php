@@ -195,6 +195,20 @@ class LiBase {
         }
     }
 
+    protected function isShowRule( $status ){
+        if ($this->commentRule == 1 && ($status == 0 || $status == 1)) { //先发后审 未审核或审核通过的展示
+            return true;
+        } elseif ($this->commentRule == 2 && $status == 1 ){ //先审后发 审核通过的展示
+            return true;
+        } elseif ($this->commentRule == 3 ){ //无需审核
+            return true;
+        } elseif ( $this->commentRule  == 4) { //无需展示
+            return false;
+        }else{
+            return false;
+        }
+    }
+
     //对写入数据进行编码
     protected function dbDataEncode( $data ){
         $extArray = json_decode($data["expands"],true);

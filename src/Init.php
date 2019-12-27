@@ -28,6 +28,7 @@ class Init {
     private $listObj;
     private $configObj;
     private $ramObj;
+    private $optObj;
 
     public function start( $originId, $token ){
         $this->ram()->checkAccess($originId,$token ) ;
@@ -131,6 +132,26 @@ class Init {
             $this->listObj->setConfig($this->config());
         }
         return $this->listObj;
+    }
+
+    //运营
+    public function opt(){
+        if (! $this->serviceStart ){
+            throw new \Exception("Error : must call start !", 0);
+
+        }
+        if (!is_object($this->optObj)) {
+            $this->optObj = new LiOpt( $this->originId, $this->commentRule );
+            $this->optObj->setRedisClient( $this->getRedisClient() );
+            $this->optObj->setMySqlClient( $this->getMySqlClient() );
+            $this->optObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
+            $this->optObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
+            $this->optObj->setReply( $this->reply() );
+            $this->optObj->setComment( $this->comment() );
+            $this->optObj->setList( $this->list() );
+            $this->optObj->setConfig($this->config());
+        }
+        return $this->optObj;
     }
 
     //访问控制

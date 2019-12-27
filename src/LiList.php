@@ -147,17 +147,6 @@ class LiList extends LiBase {
      * @param string $commentedId 被评论物ID
      */
     public function setCommentList( $commentedId ){
-        if ($this->commentRule == 1) { //先发后审
-            $status = 0;
-        } elseif ($this->commentRule == 2){ //先审后发
-            $status = 1;
-        } elseif ($this->commentRule == 3){ //无需审核
-            $status = null;
-        } elseif ( $this->commentRule  == 4) { //无需展示
-            return;
-        }else{
-            return;
-        }
         $data = $this->getCommentListByDb( $commentedId );
         $timeLineKey = $this->timeLineCommentKey( $commentedId );
         $likeNumKey = $this->likeLineCommentKey( $commentedId );
@@ -170,21 +159,27 @@ class LiList extends LiBase {
             $this->getRedisClient()->del($replyNumKey);
         }else{
             foreach ($data as $val) {
-                if ( $status === null && $val["status"] == $status ) {
+                if ( $this->isShowRule($val["status"]) ) {
                     $this->getRedisClient()->zAdd($timeLineKey.":tmp", $this->getRedisScore($val["createtime"],$commentCount,$i),$val["comment_id"]);
                     $this->getRedisClient()->zAdd($likeNumKey.":tmp", $this->getRedisScore($val["like_num"],$commentCount,$i), $val["comment_id"]);
                     $this->getRedisClient()->zAdd($replyNumKey.":tmp", $this->getRedisScore($val["reply_num"],$commentCount,$i), $val["comment_id"]);
                     $i ++;
                 }
             }
-            $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
-            $this->getRedisClient()->rename($likeNumKey.":tmp",$likeNumKey);
-            $this->getRedisClient()->rename($replyNumKey.":tmp",$replyNumKey);
+            if ($i > 0) {
+                $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
+                $this->getRedisClient()->rename($likeNumKey.":tmp",$likeNumKey);
+                $this->getRedisClient()->rename($replyNumKey.":tmp",$replyNumKey);
+            }else{
+                $this->getRedisClient()->del($timeLineKey);
+                $this->getRedisClient()->del($likeNumKey);
+                $this->getRedisClient()->del($replyNumKey);
+            }
         }
     }
 
     //获取评论列表
-    private function getCommentListByDb( $commentedId ){
+    public function getCommentListByDb( $commentedId ){
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $sql = "select comment_id,like_num,reply_num,createtime,status from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = 0";
         $allComment = $this->getMySqlClient()->fetchAll( $sql );
@@ -194,7 +189,7 @@ class LiList extends LiBase {
     //--------------- 回复部分 ---------------//
 
     public function timeLineReplyKey( $commentId ){
-        $key = $this->getRedisKeyPrefix().":reply:list:timeLine:".$commentId;
+        $key = $this->getRedisKeyPrefix().":".$this->originId.":reply:list:timeLine:".$commentId;
         return $key;
     }
 
@@ -256,17 +251,6 @@ class LiList extends LiBase {
      * @param string $commentId 评论ID
      */
     public function setReplyList( $commentedId,$commentId ){
-        if ($this->commentRule == 1) { //先发后审
-            $status = 0;
-        } elseif ($this->commentRule == 2){ //先审后发
-            $status = 1;
-        } elseif ($this->commentRule == 3){ //无需审核
-            $status = null;
-        } elseif ( $this->commentRule  == 4) { //无需展示
-            return;
-        }else{
-            return;
-        }
         $data = $this->getReplyListByDb( $commentedId, $commentId );
         $timeLineKey = $this->timeLineReplyKey( $commentId );
         $i = 0;
@@ -275,19 +259,23 @@ class LiList extends LiBase {
             $this->getRedisClient()->del($timeLineKey);
         }else{
             foreach ($data as $val) {
-                if ($status === null || $val["status"] == $status) {
+                if ( $this->isShowRule($val["status"]) ) {
                     $this->getRedisClient()->zAdd($timeLineKey . ":tmp", $this->getRedisScore($val["createtime"], $count, $i), $val["comment_id"]);
                     $i++;
                 }
             }
-            $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
+            if ($i > 0) {
+                $this->getRedisClient()->rename($timeLineKey.":tmp",$timeLineKey);
+            }else{
+                $this->getRedisClient()->del($timeLineKey);
+            }
         }
     }
 
     //回复部分
-    private function getReplyListByDb( $commentedId, $commentId ){
+    public function getReplyListByDb( $commentedId, $commentId ){
         $tableName = $this->tableName($this->getMySqlTablePrefix(),$commentedId);
-        $sql = "select comment_id,like_num,reply_num,createtime from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = '{$commentId}'";
+        $sql = "select comment_id,like_num,reply_num,createtime,status from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = '{$commentId}'";
         $allReply = $this->getMySqlClient()->fetchAll( $sql );
         return $allReply;
     }

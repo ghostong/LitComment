@@ -13,7 +13,7 @@ class LiReply extends LiBase {
     private $replyLastError;
 
     function  __construct( $originId, $commentRule ){
-        parent::__construct($originId, $commentRule );
+        parent::__construct( $originId, $commentRule );
     }
 
     //获取错误信息
@@ -22,8 +22,8 @@ class LiReply extends LiBase {
     }
 
     //设置错误信息
-    private function setLastError( $lastError ){
-        $this->replyLastError = $lastError;
+    private function setLastError( $file, $line, $lastError ){
+        $this->replyLastError = $file.":".$line ."-> [". $lastError."[". $this->replyLastError."]]";
     }
 
     //评论信息的key
@@ -39,11 +39,14 @@ class LiReply extends LiBase {
      * @return array
      */
     public function getReplyInfo( $commentedId, $commentId, $replyId ){
+        if (empty($commentedId) || empty($commentId) || empty($replyId)) {
+            return [];
+        }
         $key = $this->getReplyInfoKey($replyId);
         $redisRes = $this->getRedisClient()->get($key);
         if ($redisRes){
             $replyInfo = json_decode($redisRes,true);
-            if ( !empty($replyInfo) && !$this->getCheck( $commentId,$replyInfo ) ){
+            if ( empty($replyInfo) || !$this->getCheck( $commentId,$replyInfo ) || !$this->isShowRule($replyInfo['status']) ){
                 return [];
             }else{
                 $replyInfo["reply_id"] = $replyInfo["comment_id"];
@@ -62,6 +65,9 @@ class LiReply extends LiBase {
      * @return array
      */
     public function setReplyInfo( $commentedId, $commentId, $replyId ){
+        if (empty($commentedId) || empty($commentId) || empty($replyId)) {
+            return [];
+        }
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $replyIdInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $replyId) ;
         if (!$this->getCheck( $commentId, $replyIdInfo )){
@@ -85,12 +91,15 @@ class LiReply extends LiBase {
      * @return array
      */
     public function getReplyInfos( $commentedId, $commentId, $replyIds = array() ){
+        if (empty($commentedId) || empty($commentId) || empty($replyIds)) {
+            return [];
+        }
         $redisKeys = array_map(function( $replyId ){ return $this->getReplyInfoKey($replyId); },$replyIds);
         $replyInfos = $this->getRedisClient()->mGet($redisKeys);
         $combine = array_combine($replyIds,$replyInfos);
         foreach ( $combine as $replyId => $info ) {
             $replyInfo = $info ?  json_decode($info,true) : $this->getReplyInfo($commentedId,$commentId,$replyId);
-            if( !$this->getCheck( $commentId, $replyInfo ) ) {
+            if( empty($replyInfo) || !$this->getCheck( $commentId, $replyInfo ) || !$this->isShowRule($replyInfo['status']) ) {
                 $combine[$replyId] = [];
             }else{
                 $replyInfo["reply_id"] = $replyInfo["comment_id"];
@@ -111,10 +120,13 @@ class LiReply extends LiBase {
      * @param string $expands 扩展信息
      * @return string
      */
-    public function add ( $commentedId, $commentedUser, $commentId, $userId, $targetUser, $content, $expands ){
+    public function add ( $commentedId, $commentedUser, $commentId, $userId, $targetUser, $content, $expands = ""){
+        if (empty($commentedId) || empty($commentedUser)|| empty($commentId) || empty($userId) || empty($content)) {
+            return 0;
+        }
         $commentInfo = $this->getComment()->getCommentInfo( $commentedId, $commentId );
         if ( empty($commentInfo) ){
-            $this->setLastError("评论ID:".$commentId." 不存在!");
+            $this->setLastError(__FILE__,__LINE__,"评论ID:".$commentId." 不存在!");
             return 0;
         }
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
@@ -126,14 +138,15 @@ class LiReply extends LiBase {
             "target_user" => $targetUser,
             "commented_user" => $commentedUser,
             "content" => $content,
-            "expands" => $expands
+            "expands" => $expands,
+            "status" => 0
         ];
         $insertData = $this->dbDataEncode($data);
         if ( $this->getMySqlClient()->Add( $tableName, $insertData ) ) {
             $this->onAdd( $this->getReplyInfo( $commentedId, $insertData["parent_id"], $insertData["comment_id"]));
             return $insertData["comment_id"];
         }else{
-            $this->setLastError( $this->getMySqlClient()->LastError() );
+            $this->setLastError( __FILE__, __LINE__, $this->getMySqlClient()->LastError() );
             return 0;
         }
     }
@@ -147,7 +160,7 @@ class LiReply extends LiBase {
      * @return bool
      */
     public function del ( $commentedId, $commentId, $replyId, $actionUserId ){
-        $replyInfo = $this->getReplyInfo( $commentedId, $commentId, $replyId );
+        $replyInfo = $this->setReplyInfo( $commentedId, $commentId, $replyId );
         if ( ! $this->deleteCheck( $commentId, $replyInfo,$actionUserId ) ) {
             return false;
         }
@@ -161,6 +174,44 @@ class LiReply extends LiBase {
         }
     }
 
+    public function pass( $commentedId, $commentId, $replyId ){
+        return $this->update( $commentedId, $commentId, $replyId, "status = ? " , [ 1 ] );
+    }
+
+    public function reject( $commentedId, $commentId, $replyId ){
+        return $this->update( $commentedId, $commentId, $replyId, "status = ? " , [ -1 ] );
+    }
+
+    /**
+     * 更新评论
+     * @param string $commentedId 被评论物ID
+     * @param string $commentId 评论ID
+     * @param string $replyId 回复ID
+     * @param string $setStr 修改信息
+     * @param array $setValue 修改值
+     * @return bool
+     */
+    public function update ( $commentedId, $commentId, $replyId, $setStr, $setValue ){
+        $replyInfo = $this->setReplyInfo( $commentedId, $commentId, $replyId );
+        if (!$this->getCheck($commentId, $replyInfo)){
+            return false;
+        }
+        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $sql = "update {$tableName} set {$setStr} where `comment_id` = ? limit 1";
+        $setValue[] = $replyId;
+        var_dump ($setValue);
+        $pdoStatement = $this->getMySqlClient()->execute($sql,$setValue);
+        echo $this->getMySqlClient()->LastSql();
+        if ( $pdoStatement ) {
+            $rowCount = $pdoStatement->rowCount();
+            if($rowCount){
+                $this->onUpdate( $replyInfo );
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * 删除所有回复
      * @param string $commentedId 被评论物ID
@@ -168,7 +219,7 @@ class LiReply extends LiBase {
      * @return bool
      */
     public function delAll ( $commentedId, $commentId ){
-        $allReply = $this->getList()->getAllReply( $commentId );
+        $allReply = $this->getList()->getReplyListByDb( $commentedId, $commentId );
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'origin_id = ? and commented_id = ? and parent_id = ? ', $this->originId, $this->getCommentedId($commentedId), $commentId );
         if ( $rowCount > 0 ) {
@@ -193,7 +244,7 @@ class LiReply extends LiBase {
         if ($this->isReply($replyInfo) && $this->isOriginId($replyInfo) && $this->isOperatorUser($replyInfo,$actionUserId) && $this->isParentId($replyInfo,$commentId)) {
             return true;
         }else{
-            $this->setLastError( $this->getBaseLastError() );
+            $this->setLastError( __FILE__, __LINE__, $this->getBaseLastError() );
             return false;
         }
     }
@@ -203,7 +254,7 @@ class LiReply extends LiBase {
         if ( $this->isReply($replyInfo) && $this->isOriginId($replyInfo) && $this->isParentId($replyInfo,$commentId)) {
             return true;
         }else{
-            $this->setLastError($this->getBaseLastError() );
+            $this->setLastError( __FILE__, __LINE__, $this->getBaseLastError() );
             return false;
         }
     }
@@ -232,7 +283,8 @@ class LiReply extends LiBase {
 
     private function onDelAll ( $commentedId, $commentId, $allReply ) {
         //删除回复对应的redis key
-        foreach ($allReply as $replyId=>$val) {
+        foreach ($allReply as $key=>$val) {
+            $replyId = $val["comment_id"];
             $key = $this->getReplyInfoKey($replyId);
             $this->getRedisClient()->del($key);
         }
@@ -240,5 +292,10 @@ class LiReply extends LiBase {
         $this->getComment()->setReplyNum($commentedId, $commentId, 0);
         //重置回复有关的列表
         $this->getList()->setReplyList( $commentedId, $commentId);
+    }
+
+    private function onUpdate ( $replyInfo ){
+        $this->setReplyInfo($replyInfo["commented_id"],$replyInfo["parent_id"],$replyInfo["comment_id"]);
+        $this->getList()->setReplyList( $replyInfo["commented_id"],$replyInfo["parent_id"] );
     }
 }

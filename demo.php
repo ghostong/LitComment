@@ -22,7 +22,7 @@ class demo{
         $lComment = new \Lit\Comment\Init();
 
         //增加权限
-        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 1);
+        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 2);
         $lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
 
         //配置项目
@@ -48,6 +48,7 @@ class demo{
             json_encode(["userName" => "笑哈哈", "url" => "https://baidu.com"])
         );
         var_dump($commentId);
+        return $commentId;
     }
 
     //获取一条评论的信息
@@ -236,6 +237,62 @@ class demo{
         );
         var_dump($result);
     }
+
+    public function setTop( $commentId ){
+        $result = $this->comment->opt()->setCommentTop(
+            $this->commentedId,
+            $commentId,
+            10
+        );
+        var_dump ($result);
+    }
+    public function getTop(){
+        $result = $this->comment->opt()->getTopComment(
+            $this->commentedId
+        );
+        var_dump($result);
+    }
+
+    public function delTop ( $commentId ){
+        $result = $this->comment->opt()->delTopComment(
+            $this->commentedId,
+            $commentId
+        );
+    }
+
+    public function commentPass ( $commentId ) {
+        $result = $this->comment->opt()->commentPass(
+            $this->commentedId,
+            $commentId
+        );
+        var_dump ($result);
+    }
+
+    public function commentReject ( $commentId ) {
+        $result = $this->comment->opt()->commentReject(
+            $this->commentedId,
+            $commentId
+        );
+        var_dump ($result);
+    }
+
+    public function replyPass ( $commentId, $replyId ) {
+        $result = $this->comment->opt()->replyPass(
+            $this->commentedId,
+            $commentId,
+            $replyId
+        );
+        var_dump ($result);
+    }
+
+    public function replyReject ( $commentId, $replyId ) {
+        $result = $this->comment->opt()->replyReject(
+            $this->commentedId,
+            $commentId,
+            $replyId
+        );
+        var_dump ($result);
+    }
 }
 
 
@@ -250,7 +307,7 @@ $demo = new demo();
 //$demo->getComment( $commentId );
 //
 ////删除一条评论
-//$demo->delComment( "5e01069ed109b3.32294299" );
+//$demo->delComment( $commentId );
 //
 ////删除所有评论
 //$demo->delAllComment();
@@ -264,7 +321,7 @@ $demo = new demo();
 //// -------------------- 回复 --------------------
 //
 ////增加一个回复
-//$replyId = $demo->addReply("5e0380dc039049.39147680");
+//$replyId = $demo->addReply("5e04aa4adee2c7.89814180");
 //
 ////获取回复
 //$demo->getReply( "5e01069ed109b3.32294299", $replyId);
@@ -305,3 +362,23 @@ $demo = new demo();
 ////获取评论回复数量
 //$demo->getReplyNum("5e0380dc039049.39147680");
 
+
+// -------------------- 运营 --------------------
+////置顶评论
+//$demo->setTop("5e04b232130024.15458178");
+
+////获取指定评论
+//$demo->getTop("5e04b232130024.15458178");
+
+//删除置顶
+//$demo->delTop("5e04b232130024.15458178");
+
+//评论通过
+//$demo->commentPass("5e04b232130024.15458178");
+//评论拒绝
+//$demo->commentReject( "5e04b232130024.15458178" );
+
+//回复通过
+//$demo->replyPass("5e04ab28989367.11773034","5e04ab289f2848.94288041");
+//回复拒绝
+//$demo->replyReject("5e04ab28989367.11773034","5e04ab289f2848.94288041");

@@ -22,8 +22,8 @@ class LiComment extends LiBase {
     }
 
     //设置错误信息
-    private function setLastError( $lastError ){
-        $this->commentLastError = $lastError;
+    private function setLastError( $file,$line, $lastError ){
+        $this->commentLastError = $file.":".$line ."-> [". $lastError."[". $this->commentLastError."]]";
     }
 
     //评论信息的key
@@ -38,11 +38,14 @@ class LiComment extends LiBase {
      * @return array
      */
     public function getCommentInfo( $commentedId, $commentId ){
+        if (empty($commentedId) || empty($commentId)) {
+            return [];
+        }
         $key = $this->getCommentInfoKey($commentId);
         $redisRes = $this->getRedisClient()->get($key);
         if ( $redisRes ){
             $commentInfo = json_decode($redisRes,true);
-            if (!empty($commentInfo) && !$this->getCheck($commentedId, $commentInfo)){
+            if (empty($commentInfo) || !$this->getCheck($commentedId, $commentInfo) || !$this->isShowRule($commentInfo['status']) ){
                 return [];
             }else{
                 return $commentInfo;
@@ -59,6 +62,9 @@ class LiComment extends LiBase {
      * @return array
      */
     public function setCommentInfo( $commentedId, $commentId ){
+        if (empty($commentedId) || empty($commentId)) {
+            return [];
+        }
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $commentInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $commentId) ;
         if ($commentInfo) {
@@ -67,6 +73,7 @@ class LiComment extends LiBase {
                 return [];
             }
         }else{
+            $this->setLastError( __FILE__,__LINE__, "数据库获取文件信息出错");
             $commentInfo = [];
         }
         $this->getRedisClient()->set($this->getCommentInfoKey($commentId),json_encode($commentInfo));
@@ -83,12 +90,15 @@ class LiComment extends LiBase {
      * @return array
      */
     public function getCommentInfos( $commentedId, $commentIds = array() ){
+        if (empty($commentedId) || empty($commentIds)) {
+            return [];
+        }
         $redisKeys = array_map(function( $commentId ){ return $this->getCommentInfoKey($commentId); },$commentIds);
         $commentInfos = $this->getRedisClient()->mGet($redisKeys);
         $combine = array_combine($commentIds,$commentInfos);
         foreach ( $combine as $commentId => $info ) {
             $commentInfo = $info ?  json_decode($info,true) : $this->getCommentInfo($commentedId,$commentId);
-            if (!$this->getCheck($commentedId,$commentInfo)) {
+            if (empty($commentInfo) || !$this->getCheck($commentedId,$commentInfo) || !$this->isShowRule($commentInfo['status'])) {
                 $combine[$commentId] = [];
             }else{
                 $combine[$commentId] = $commentInfo;
@@ -106,7 +116,10 @@ class LiComment extends LiBase {
      * @param string $expands 扩展信息
      * @return string
      */
-    public function add ( $commentedId, $commentedUser, $userId, $content, $expands ){
+    public function add ( $commentedId, $commentedUser, $userId, $content, $expands = ""){
+        if (empty($commentedId) || empty($commentedUser) || empty($userId) || empty($content)) {
+            return 0;
+        }
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $data = [
             "origin_id"  => $this->originId,
@@ -116,14 +129,15 @@ class LiComment extends LiBase {
             "target_user" => 0,
             "commented_user" => $commentedUser,
             "content" => $content,
-            "expands" => $expands
+            "expands" => $expands,
+            "status" => 0
         ];
         $insertData = $this->dbDataEncode($data);
         if ( $this->getMySqlClient()->Add( $tableName, $insertData ) ) {
             $this->onAdd( $this->getCommentInfo( $commentedId, $insertData["comment_id"] ) );
             return $insertData["comment_id"];
         }else{
-            $this->setLastError( $this->getMySqlClient()->LastError() );
+            $this->setLastError( __FILE__,__LINE__, $this->getMySqlClient()->LastError() );
             return "0";
         }
     }
@@ -136,7 +150,7 @@ class LiComment extends LiBase {
      * @return bool
      */
     public function del ( $commentedId, $commentId, $actionUserId ){
-        $commentInfo = $this->getCommentInfo( $commentedId, $commentId );
+        $commentInfo = $this->setCommentInfo( $commentedId, $commentId );
         if ( ! $this->deleteCheck($commentedId, $commentInfo,$actionUserId) ) {
             return false;
         }
@@ -156,7 +170,7 @@ class LiComment extends LiBase {
      * @return bool
      */
     public function delAll ( $commentedId ){
-        $allComment = $this->getList()->getAllComment( $commentedId );
+        $allComment = $this->getList()->getCommentListByDb( $commentedId );
         $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'origin_id = ? and commented_id = ? and parent_id = "0"', $this->originId, $this->getCommentedId($commentedId) );
         if ( $rowCount > 0 ) {
@@ -198,6 +212,14 @@ class LiComment extends LiBase {
         return $this->update( $commentedId, $commentId, "reply_num = ? " , [ $num ] );
     }
 
+    public function pass( $commentedId, $commentId ){
+        return $this->update( $commentedId, $commentId, "status = ? " , [ 1 ] );
+    }
+
+    public function reject( $commentedId, $commentId ){
+        return $this->update( $commentedId, $commentId, "status = ? " , [ -1 ] );
+    }
+
     /**
      * 更新评论
      * @param string $commentedId 被评论物ID
@@ -207,7 +229,7 @@ class LiComment extends LiBase {
      * @return bool
      */
     private function update ( $commentedId, $commentId, $setStr, $setValue ){
-        $commentInfo = $this->getCommentInfo( $commentedId, $commentId );
+        $commentInfo = $this->setCommentInfo( $commentedId, $commentId );
         if (!$this->getCheck($commentedId, $commentInfo)){
             return false;
         }
@@ -229,13 +251,13 @@ class LiComment extends LiBase {
     //检查是否能删除
     private function deleteCheck ( $commentedId, $commentInfo, $actionUserId ) {
         if (empty($commentInfo)) {
-            $this->setLastError( "评论ID 不存在");
+            $this->setLastError( __FILE__,__LINE__,"评论ID 不存在");
             return false;
         }
         if ( $this->isComment($commentInfo) && $this->isOriginId($commentInfo) && $this->isOperatorUser($commentInfo,$actionUserId) && $this->isCommented($commentInfo, $commentedId) ) {
             return true;
         }else{
-            $this->setLastError( $this->getBaseLastError() );
+            $this->setLastError( __FILE__,__LINE__,$this->getBaseLastError() );
             return false;
         }
     }
@@ -245,7 +267,7 @@ class LiComment extends LiBase {
         if ( $this->isComment($commentInfo) && $this->isOriginId($commentInfo) && $this->isCommented($commentInfo, $commentedId) ) {
             return true;
         }else{
-            $this->setLastError($this->getBaseLastError() );
+            $this->setLastError(__FILE__,__LINE__, $this->getBaseLastError() );
             return false;
         }
     }
@@ -272,8 +294,9 @@ class LiComment extends LiBase {
         $this->getList()->setCommentList( $commentInfo["commented_id"] );
     }
 
-    private function onDelAll ( $commentedId,$allComment ){
-        foreach ($allComment as $commentId => $val) {
+    private function onDelAll ( $commentedId, $allComment ){
+        foreach ($allComment as $key => $val) {
+            $commentId = $val['comment_id'];
             //删除所有回复
             $this->getReply()->delAll($commentedId,$commentId);
             //删除评论对应的redis key
