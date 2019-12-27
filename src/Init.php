@@ -169,4 +169,38 @@ class Init {
         }
         return $this->configObj;
     }
+
+    //创建表语句
+    public function createTableSql() {
+        $sql = "
+        CREATE TABLE `%s` (
+         `comment_id` char(23) NOT NULL COMMENT '主键ID,评论ID',
+         `origin_id` int(11) NOT NULL COMMENT '来源ID',
+         `commented_id` char(32) NOT NULL COMMENT '被评论物ID',
+         `parent_id` char(23) NOT NULL COMMENT '父级ID,用于区别评论还是回复',
+         `user_id` char(32) NOT NULL COMMENT '评论创建者用户ID',
+         `target_user` char(32) NOT NULL COMMENT '评论是否针对某人',
+         `like_num` int(11) NOT NULL DEFAULT '0' COMMENT '喜欢数',
+         `reply_num` int(11) NOT NULL DEFAULT '0' COMMENT '回复数量',
+         `commented_user` char(32) NOT NULL COMMENT '被评论物的作者',
+         `content` varchar(4000) NOT NULL COMMENT '评论内容',
+         `createtime` int(11) NOT NULL COMMENT '创建时间',
+         `expands` varchar(4000) NOT NULL COMMENT '扩展信息',
+         `status` enum('1','0','-1') NOT NULL DEFAULT '0' COMMENT '审核状态 0 未审核,1 通过,-1 拒绝',
+         PRIMARY KEY (`comment_id`),
+         KEY `origin_id` (`origin_id`,`commented_id`,`parent_id`)
+        ) %s ;
+        ";
+
+        $tableArray = [];
+        for ($i = 0; $i < 16 ; $i ++) {
+            $tabExt =  $this->config()->getMySqlTablePrefix().base_convert($i,10,16);
+            $tableArray[]=$tabExt;
+            echo sprintf($sql,$tabExt,"ENGINE=MyISAM DEFAULT CHARSET=utf8mb4"),"\n";
+        }
+
+        $tableAll = implode(",",$tableArray);
+        echo sprintf($sql,$this->config()->getMySqlTablePrefix()."merge","ENGINE = MERGE UNION = ($tableAll)");
+
+    }
 }

@@ -11,30 +11,36 @@ require_once ("./vendor/autoload.php");
 class demo{
 
     private $comment;
-    private $commentedId = 1123;
+    private $commentedId = 123;
     private $commentedUser = 999;
     private $userId = 1234;
     private $targetUser =  888;
 
     function __construct(){
 
+        $this->commentedId = rand(100,999);
+
         //实例化化项目
         $lComment = new \Lit\Comment\Init();
 
         //增加权限
-        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 2);
+        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 1);
         $lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
 
         //配置项目
         $lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
         $lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
-        $lComment->config()->setMySqlTablePrefix("comment");
+        $lComment->config()->setMySqlTablePrefix("comment_");
         $lComment->config()->setRedisKeyPrefix("lc");
 
         //启动项目
         $lComment->start( 1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB" );
 
         $this->comment = $lComment;
+    }
+
+    public function createTableSql(){
+        $this->comment->createTableSql();
     }
 
     //增加一条评论
@@ -298,10 +304,13 @@ class demo{
 
 $demo = new demo();
 
+//$demo->createTableSql();
+
 // -------------------- 评论部分 --------------------
 //
 ////增加一条评论
 //$commentId = $demo->addComment();
+
 //
 ////获取一条评论的信息
 //$demo->getComment( $commentId );
@@ -367,7 +376,7 @@ $demo = new demo();
 ////置顶评论
 //$demo->setTop("5e04b232130024.15458178");
 
-////获取指定评论
+////获取置顶评论
 //$demo->getTop("5e04b232130024.15458178");
 
 //删除置顶
@@ -375,10 +384,12 @@ $demo = new demo();
 
 //评论通过
 //$demo->commentPass("5e04b232130024.15458178");
+
 //评论拒绝
 //$demo->commentReject( "5e04b232130024.15458178" );
 
 //回复通过
 //$demo->replyPass("5e04ab28989367.11773034","5e04ab289f2848.94288041");
+
 //回复拒绝
 //$demo->replyReject("5e04ab28989367.11773034","5e04ab289f2848.94288041");

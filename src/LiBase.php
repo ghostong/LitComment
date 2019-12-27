@@ -242,12 +242,12 @@ class LiBase {
     }
 
     //数据库表名
-    protected function tableName( $tablePrefix, $commentedId ){
+    public function tableName( $tablePrefix, $commentedId ){
         $commentedId = $this->getCommentedId($commentedId);
         $tabNum = substr($commentedId,-1);
         echo $tablePrefix.$tabNum.": \n";
         //TODO
-        return $tablePrefix;
+        return $tablePrefix.$tabNum;
     }
 
     //获取最后错误

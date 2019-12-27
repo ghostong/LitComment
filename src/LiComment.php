@@ -46,6 +46,7 @@ class LiComment extends LiBase {
         if ( $redisRes ){
             $commentInfo = json_decode($redisRes,true);
             if (empty($commentInfo) || !$this->getCheck($commentedId, $commentInfo) || !$this->isShowRule($commentInfo['status']) ){
+                $this->setLastError(__FILE__,__LINE__,"评论不存在,越界访问或审核未通过");
                 return [];
             }else{
                 return $commentInfo;
