@@ -12,8 +12,8 @@ class LiReply extends LiBase {
 
     private $replyLastError;
 
-    function  __construct( $originId ){
-        parent::__construct($originId);
+    function  __construct( $originId, $commentRule ){
+        parent::__construct($originId, $commentRule );
     }
 
     //获取错误信息

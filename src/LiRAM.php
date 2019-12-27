@@ -15,19 +15,33 @@ class LiRAM  {
 
 
     public function checkAccess ( $originId, $token ) {
+        if (!$this->isAllowOrigin($originId)) {
+            throw new \Exception("Error : originId ". $originId." !", 0);
+            return false;
+        }
         if ( $this->getToken( $originId ) === $token && !empty($token) ) {
             return true;
         }else{
+            throw new \Exception("Error : Access denied !", 0);
             return false;
         }
     }
 
     public function add( $originId, $token, $name, $rule){
         if( isset($this->db[$originId]) ){ //ID重复
-            return false;
+            throw new \Exception("Error : duplicate originId ". $originId." !", 0);
+
         }
         if( isset($this->db[$originId]["name"] ) && $this->db[$originId]["name"] == $name) { //名字重复
-            return false;
+            throw new \Exception("Error : duplicate name ". $name." !", 0);
+
+        }
+        if ( strlen( $token ) < 32 ) {
+            throw new \Exception("Error : token length mast  greater than 31 !", 0);
+        }
+        $config = new LiConfig();
+        if (! $config->isAllowRule($rule) ) {
+            throw new \Exception("Error : rule error !", 0 );
         }
         $this->db[$originId] = [
             "originId" => $originId,
@@ -35,6 +49,7 @@ class LiRAM  {
             "name" => $name,
             "rule" => $rule
         ];
+        return true;
     }
 
     private function getToken( $originId){
@@ -45,13 +60,31 @@ class LiRAM  {
         }
     }
 
-    public function getInfo( $originId){
+    public function getInfo( $originId ){
         if(isset($this->db[$originId])) {
             $info = $this->db[$originId];
             $info["token"] = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
             return $info;
         }else{
             return [];
+        }
+    }
+
+    public function getRule( $originId ){
+        $info = $this->getInfo( $originId );
+        $config = new LiConfig();
+        if (! $config->isAllowRule( $info["rule"] ) ) {
+            throw new \Exception("Error : rule error !", 0 );
+        }else{
+            return $info["rule"];
+        }
+    }
+
+    public function isAllowOrigin( $originId ){
+        if ( in_array( $originId,array_keys($this->db) ) ) {
+            return true;
+        }else{
+            return false;
         }
     }
 }

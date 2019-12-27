@@ -12,9 +12,8 @@ class LiList extends LiBase {
 
     private $listLastError;
 
-    function  __construct( $originId ){
-        parent::__construct($originId);
-        $this->originId = $originId;
+    function  __construct( $originId, $commentRule ){
+        parent::__construct($originId, $commentRule);
     }
 
     public function getLastError(){

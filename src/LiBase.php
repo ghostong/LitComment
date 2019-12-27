@@ -14,6 +14,7 @@ use Lit\Drivers\LiRedis;
 class LiBase {
 
     protected $originId;
+    protected $commentRule;
     private $baseLastError;
 
     private $redisClient;
@@ -24,18 +25,19 @@ class LiBase {
     private $commentObj;
     private $replyObj;
     private $listObj;
+    private $configObj;
+    private $ramObj;
 
-    protected function __construct( $originId ){
-        if (null == $originId) {
-            throw new \Exception("originId 不能为空");
-        }
+    protected function __construct( $originId, $commentRule ){
         $this->originId = $originId;
+        $this->commentRule = $commentRule;
     }
 
     //连接配置
     protected function getRedisClient () {
         return $this->redisClient;
     }
+
     public function setRedisClient( $redisClient ){
         $this->redisClient = $redisClient;
     }
@@ -50,6 +52,7 @@ class LiBase {
     protected function getRedisKeyPrefix (){
         return $this->redisKeyPrefix;
     }
+
     public function setRedisKeyPrefix ($redisKeyPrefix){
         $this->redisKeyPrefix = $redisKeyPrefix;
     }
@@ -65,6 +68,7 @@ class LiBase {
     protected function getReply(){
         return $this->replyObj;
     }
+
     public function setReply($reply){
         $this->replyObj = $reply;
     }
@@ -72,6 +76,7 @@ class LiBase {
     protected function getComment(){
         return $this->commentObj;
     }
+
     public function setComment($comment){
         $this->commentObj = $comment;
     }
@@ -79,10 +84,26 @@ class LiBase {
     protected function getList(){
         return $this->listObj;
     }
+
     public function setList($list){
         $this->listObj = $list;
     }
 
+    protected function getConfig(){
+        return $this->configObj;
+    }
+
+    public function setConfig($config){
+        $this->configObj = $config;
+    }
+
+    protected function getRam( $ram ){
+        return $this->ramObj;
+    }
+
+    public function setRam( $ram ){
+        $this->ramObj = $ram;
+    }
 
     //生成唯一ID
     protected function getUniqId(){
@@ -116,10 +137,10 @@ class LiBase {
 
     //是否是评论
     protected function isComment( $commentInfo ){
-        if ( $commentInfo["parent_id"] == "0" ) {
+        if ( !empty($commentInfo) && isset($commentInfo["parent_id"]) && $commentInfo["parent_id"] == "0" ) {
             return true;
         }else{
-            $this->setBaseLastError( $commentInfo["comment_id"]." 数据错误,此id不是评论" );
+            $this->setBaseLastError( "数据错误,此id不是评论" );
             return false;
         }
     }
@@ -129,7 +150,7 @@ class LiBase {
         if ( isset($commentInfo["parent_id"]) && $commentInfo["parent_id"] != "0" ) {
             return true;
         }else{
-            $this->setBaseLastError( $commentInfo["comment_id"]." 数据错误,此id不是回复" );
+            $this->setBaseLastError( "数据错误,此id不是回复" );
             return false;
         }
     }

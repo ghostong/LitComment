@@ -24,19 +24,21 @@ class LiConfig {
     private $mySqlDbName = "";
     private $mySqlCharSet = "";
 
-    //来源ID
-    private $originId = "";
 
     //redis 评论key前缀
     private $redisKeyPrefix = "lc";
     //redis 评论数据库表前缀
     private $tablePrefix = "lc";
 
-    public function __construct( $originId ){
-        $this->originId = $originId;
+    public function isAllowRule ( $rule ){
+        $ruleAll = $this->getRuleAll();
+        if (! in_array( $rule,array_keys($ruleAll)) ) {
+            return false;
+        }else{
+            return true;
+        }
     }
-
-    public function getRuleExplain(){
+    public function getRuleAll(){
         return [
             1 => "先发后审",  //评论先发布展示, 再审核
             2 => "先审后发",  //评论必须审核后, 再展示

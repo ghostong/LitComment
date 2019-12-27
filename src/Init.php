@@ -19,6 +19,8 @@ class Init {
 
     //来源ID
     private $originId;
+    private $commentRule;
+    private $serviceStart = false;
 
     //各对象
     private $commentObj;
@@ -28,11 +30,10 @@ class Init {
     private $ramObj;
 
     public function start( $originId, $token ){
+        $this->ram()->checkAccess($originId,$token ) ;
         $this->originId = $originId;
-        if ( ! $this->ram()->checkAccess($originId,$token ) ) {
-            throw new \Exception("Access Denied !", 0);
-        }
-        var_dump ( $this->ram()->getInfo( $originId ) );
+        $this->commentRule = $this->ram()->getRule($this->originId);
+        $this->serviceStart = true;
     }
 
     // 通过配置生成一个 redis 连接
@@ -77,42 +78,57 @@ class Init {
 
     //评论
     public function comment () {
+        if (! $this->serviceStart ){
+            throw new \Exception("Error : must call start !", 0);
+
+        }
         if (!is_object($this->commentObj)){
-            $this->commentObj = new LiComment( $this->originId );
+            $this->commentObj = new LiComment( $this->originId, $this->commentRule );
             $this->commentObj->setRedisClient( $this->getRedisClient() );
             $this->commentObj->setMySqlClient( $this->getMySqlClient() );
             $this->commentObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->commentObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->commentObj->setReply( $this->reply() );
             $this->commentObj->setList( $this->list() );
+            $this->commentObj->setConfig($this->config());
         }
         return $this->commentObj;
     }
 
     //回复
     public function reply () {
+        if (! $this->serviceStart ){
+            throw new \Exception("Error : must call start !", 0);
+
+        }
         if (!is_object($this->replyObj)) {
-            $this->replyObj = new LiReply( $this->originId );
+            $this->replyObj = new LiReply( $this->originId, $this->commentRule );
             $this->replyObj->setRedisClient( $this->getRedisClient() );
             $this->replyObj->setMySqlClient( $this->getMySqlClient() );
             $this->replyObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->replyObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->replyObj->setComment( $this->comment() );
             $this->replyObj->setList( $this->list() );
+            $this->replyObj->setConfig($this->config());
         }
         return $this->replyObj;
     }
 
     //列表
     public function list () {
+        if (! $this->serviceStart ){
+            throw new \Exception("Error : must call start !", 0);
+
+        }
         if (!is_object($this->listObj)) {
-            $this->listObj = new LiList( $this->originId );
+            $this->listObj = new LiList( $this->originId, $this->commentRule );
             $this->listObj->setRedisClient( $this->getRedisClient() );
             $this->listObj->setMySqlClient( $this->getMySqlClient() );
             $this->listObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->listObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->listObj->setReply( $this->reply() );
             $this->listObj->setComment( $this->comment() );
+            $this->listObj->setConfig($this->config());
         }
         return $this->listObj;
     }
@@ -128,9 +144,8 @@ class Init {
     //配置
     public function config(){
         if (!is_object($this->configObj)) {
-            $this->configObj = new LiConfig( $this->originId );
+            $this->configObj = new LiConfig();
         }
         return $this->configObj;
     }
-
 }
