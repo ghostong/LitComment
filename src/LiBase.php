@@ -19,6 +19,7 @@ class LiBase {
 
     private $redisClient;
     private $mySqlClient;
+    private $xunSearchClient;
     private $tablePrefix;
     private $redisKeyPrefix;
 
@@ -47,6 +48,13 @@ class LiBase {
     }
     public function setMySqlClient( $mySqlClient ){
         $this->mySqlClient = $mySqlClient;
+    }
+
+    protected function getXunSearchClient (){
+        return $this->xunSearchClient;
+    }
+    public function setXunSearchClient( $xunSearchClient ){
+        $this->xunSearchClient = $xunSearchClient;
     }
 
     protected function getRedisKeyPrefix (){
@@ -107,7 +115,7 @@ class LiBase {
 
     //生成唯一ID
     protected function getUniqId(){
-        return uniqid("",true);
+        return uniqid("").rand(100,999);
     }
 
     //评论ID

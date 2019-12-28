@@ -30,6 +30,7 @@ class demo{
         //配置项目
         $lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
         $lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
+        $lComment->config()->setXunSearchConfig("./lcomment.ini");
         $lComment->config()->setMySqlTablePrefix("comment_");
         $lComment->config()->setRedisKeyPrefix("lc");
 
@@ -299,10 +300,21 @@ class demo{
         );
         var_dump ($result);
     }
+
+    public function test(){
+        $ret = $this->comment->opt()->optList(
+            [
+                "comment_id"=>"5e05d5b849fd1893"
+            ]
+        );
+        var_dump ($ret);
+    }
 }
 
 
 $demo = new demo();
+
+$demo->test();
 
 //$demo->createTableSql();
 
@@ -393,3 +405,81 @@ $demo = new demo();
 
 //回复拒绝
 //$demo->replyReject("5e04ab28989367.11773034","5e04ab289f2848.94288041");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+
+
+function buildIndex($xs) {
+$xs->index->stopRebuild();
+$xs->index->clean();
+$xs->index->beginRebuild();
+$sql = "select * from comment_merge ";
+$pdo = new \Lit\Drivers\LiMySQL( "192.168.31.246", $port='3306', "comment", "123456", "comment", $charSet='utf8' );
+$res = $pdo->query($sql);
+foreach ($res as $val) {
+$doc = new XSDocument;
+$doc->setFields($val);
+$xs->index->add($doc);
+}
+$result = $xs->index->endRebuild();
+var_dump ($result);
+}
+
+function addData ( $xs ){
+$data = array(
+"comment_id" => uniqid(),
+"origin_id" =>  uniqid(),
+"commented_id" => uniqid(),
+"parent_id" => uniqid (),
+"user_id" => uniqid(),
+"commented_user"=> uniqid(),
+"content"=> uniqid(),
+"status" => rand (-1,1),
+"createtime"=>time(),
+);
+
+$doc = new XSDocument;
+$doc->setFields($data);
+var_dump ( $xs->index->add($doc) );
+
+
+}
+
+function search ( $xs ) {
+try {
+
+$search = $xs->search; // 获取 搜索对象
+//        $search->addWeight('origin_id',"2");
+$search->setSort ("createtime",false);
+$search->setQuery('origin_id:1');
+$search->addRange('createtime',1577440696,1577440704);
+//        $search->setQuery('comment_id:14');
+$search->setLimit(10);
+$docs = $search->search(); // 执行搜索，将搜索结果文档保存在 $docs 数组
+
+var_dump ( $search->count() );
+
+var_dump ($docs);
+
+}catch (XSException $e){
+
+echo "\n" . $e->getTraceAsString() . "\n";
+
+}
+
+}
+
+ */

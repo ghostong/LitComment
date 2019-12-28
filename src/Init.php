@@ -9,6 +9,7 @@ namespace Lit\Comment;
 
 use Lit\Drivers\LiRedis;
 use Lit\Drivers\LiMySQL;
+use function Sodium\randombytes_uniform;
 
 class Init {
 
@@ -16,6 +17,8 @@ class Init {
     private $redisClient;
     //mysql 客户端连接
     private $mySqlClient;
+    //xunSearch 客户端连接
+    private $xunSearchClient;
 
     //来源ID
     private $originId;
@@ -61,10 +64,18 @@ class Init {
         return $this;
     }
 
+    // 通过配置生成一个 xunSearch 连接
+    private function setXunSearchClient () {
+        $this->xunSearchClient = $xs = new \XS(
+            $this->config()->getXunSearchConfig()
+        );
+        return $this;
+    }
+
     // redis 连接
     private function getRedisClient(){
         if ( ! $this->redisClient ) {
-            $this->setRedisClient();
+             $this->setRedisClient();
         }
         return $this->redisClient;
     }
@@ -75,6 +86,14 @@ class Init {
             $this->setMySqlClient();
         }
         return $this->mySqlClient;
+    }
+
+    // xunsearch 连接
+    private function getXunSearchClient(){
+        if ( ! $this->xunSearchClient ) {
+            $this->setXunSearchClient();
+        }
+        return $this->xunSearchClient;
     }
 
     //评论
@@ -144,6 +163,7 @@ class Init {
             $this->optObj = new LiOpt( $this->originId, $this->commentRule );
             $this->optObj->setRedisClient( $this->getRedisClient() );
             $this->optObj->setMySqlClient( $this->getMySqlClient() );
+            $this->optObj->setXunSearchClient( $this->getXunSearchClient() );
             $this->optObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->optObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->optObj->setReply( $this->reply() );
@@ -174,7 +194,7 @@ class Init {
     public function createTableSql() {
         $sql = "
         CREATE TABLE `%s` (
-         `comment_id` char(23) NOT NULL COMMENT '主键ID,评论ID',
+         `comment_id` char(16) NOT NULL COMMENT '主键ID,评论ID',
          `origin_id` int(11) NOT NULL COMMENT '来源ID',
          `commented_id` char(32) NOT NULL COMMENT '被评论物ID',
          `parent_id` char(23) NOT NULL COMMENT '父级ID,用于区别评论还是回复',

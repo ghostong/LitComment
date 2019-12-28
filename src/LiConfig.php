@@ -24,6 +24,9 @@ class LiConfig {
     private $mySqlDbName = "";
     private $mySqlCharSet = "";
 
+    //xunSearch 配置
+    private $xunSearchConfigFile="";
+
 
     //redis 评论key前缀
     private $redisKeyPrefix = "lc";
@@ -135,6 +138,18 @@ class LiConfig {
         $this->mySqlDbName   = $dbName;
         $this->mySqlCharSet  = $charSet;
         return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getXunSearchConfig ( ) {
+        return $this->xunSearchConfigFile;
+    }
+
+    // xunSearch 设置
+    public function setXunSearchConfig ( $configFile ) {
+        $this->xunSearchConfigFile = $configFile;
     }
 
     // 获取 Redis表前缀
