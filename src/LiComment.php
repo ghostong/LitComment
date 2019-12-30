@@ -66,7 +66,7 @@ class LiComment extends LiBase {
         if (empty($commentedId) || empty($commentId)) {
             return [];
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $commentInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $commentId) ;
         if ($commentInfo) {
             $commentInfo = $this->dbDataDecode($commentInfo);
@@ -121,7 +121,7 @@ class LiComment extends LiBase {
         if (empty($commentedId) || empty($commentedUser) || empty($userId) || empty($content)) {
             return 0;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $data = [
             "origin_id"  => $this->originId,
             "commented_id" => $commentedId,
@@ -147,7 +147,7 @@ class LiComment extends LiBase {
      * 删除一个评论
      * @param string $commentedId 被评论物ID
      * @param string $commentId 评论ID
-     * @param string $actionUserId 操作的用户ID
+     * @param string $actionUserId 操作的用户ID (评论发起用户或者被评论物所属用户ID)
      * @return bool
      */
     public function del ( $commentedId, $commentId, $actionUserId ){
@@ -155,7 +155,7 @@ class LiComment extends LiBase {
         if ( ! $this->deleteCheck($commentedId, $commentInfo,$actionUserId) ) {
             return false;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'comment_id = ? limit 1', $commentId );
         if ( $rowCount > 0 ) {
             $this->onDel( $commentInfo );
@@ -172,7 +172,7 @@ class LiComment extends LiBase {
      */
     public function delAll ( $commentedId ){
         $allComment = $this->getList()->getCommentListByDb( $commentedId );
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'origin_id = ? and commented_id = ? and parent_id = "0"', $this->originId, $this->getCommentedId($commentedId) );
         if ( $rowCount > 0 ) {
             $this->onDelAll( $commentedId, $allComment );
@@ -234,11 +234,10 @@ class LiComment extends LiBase {
         if (!$this->getCheck($commentedId, $commentInfo)){
             return false;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $sql = "update {$tableName} set {$setStr} where `comment_id` = ? limit 1";
         $setValue[] = $commentId;
         $pdoStatement = $this->getMySqlClient()->execute($sql,$setValue);
-        echo $this->getMySqlClient()->LastSql();
         if ( $pdoStatement ) {
             $rowCount = $pdoStatement->rowCount();
             if($rowCount){
@@ -275,15 +274,27 @@ class LiComment extends LiBase {
 
     //hook
     private function onAdd( $commentInfo ){
+
         //重置评论有关的列表
         $this->getList()->setCommentList( $commentInfo["commented_id"] );
+
+        //写入评论搜索引擎
+        $doc = new \XSDocument;
+        $doc->setFields($commentInfo);
+        $this->getXunSearchClient()->index->add($doc);
     }
 
     private function onUpdate( $commentInfo ){
+
         //重置评论有关的列表
         $this->setCommentInfo( $commentInfo["commented_id"], $commentInfo["comment_id"]);
         //重置评论有关的列表
         $this->getList()->setCommentList( $commentInfo["commented_id"] );
+
+        //更新评论搜索引擎
+        $doc = new \XSDocument;
+        $doc->setFields($commentInfo);
+        $this->getXunSearchClient()->index->update($doc);
     }
 
     private function onDel( $commentInfo ){
@@ -293,9 +304,13 @@ class LiComment extends LiBase {
         $this->getReply()->delAll( $commentInfo["commented_id"], $commentInfo["comment_id"] );
         //重置评论有关的列表
         $this->getList()->setCommentList( $commentInfo["commented_id"] );
+
+        //删除评论搜索引擎
+        $this->getXunSearchClient()->index->del($commentInfo["comment_id"]);
     }
 
     private function onDelAll ( $commentedId, $allComment ){
+        $this->getRedisClient()->multi();
         foreach ($allComment as $key => $val) {
             $commentId = $val['comment_id'];
             //删除所有回复
@@ -303,7 +318,10 @@ class LiComment extends LiBase {
             //删除评论对应的redis key
             $key = $this->getCommentInfoKey($commentId);
             $this->getRedisClient()->del($key);
+            //删除评论搜索引擎
+            $this->getXunSearchClient()->index->del($commentId);
         }
+        $this->getRedisClient()->exec();
         //删除评论下面所有的回复
         $this->getList()->setCommentList( $commentedId );
     }

@@ -153,6 +153,7 @@ class LiList extends LiBase {
         $replyNumKey = $this->replyLineCommentKey( $commentedId );
         $i = 0;
         $commentCount = count($data);
+        $this->getRedisClient()->multi();
         if ($commentCount == 0) {
             $this->getRedisClient()->del($timeLineKey);
             $this->getRedisClient()->del($likeNumKey);
@@ -176,11 +177,12 @@ class LiList extends LiBase {
                 $this->getRedisClient()->del($replyNumKey);
             }
         }
+        $this->getRedisClient()->exec();
     }
 
     //获取评论列表
     public function getCommentListByDb( $commentedId ){
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $sql = "select comment_id,like_num,reply_num,createtime,status from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = 0";
         $allComment = $this->getMySqlClient()->fetchAll( $sql );
         return $allComment;
@@ -255,6 +257,7 @@ class LiList extends LiBase {
         $timeLineKey = $this->timeLineReplyKey( $commentId );
         $i = 0;
         $count = count($data);
+        $this->getRedisClient()->multi();
         if($count == 0) {
             $this->getRedisClient()->del($timeLineKey);
         }else{
@@ -270,11 +273,12 @@ class LiList extends LiBase {
                 $this->getRedisClient()->del($timeLineKey);
             }
         }
+        $this->getRedisClient()->exec();
     }
 
     //回复部分
     public function getReplyListByDb( $commentedId, $commentId ){
-        $tableName = $this->tableName($this->getMySqlTablePrefix(),$commentedId);
+        $tableName = $this->tableName($commentedId);
         $sql = "select comment_id,like_num,reply_num,createtime,status from {$tableName} where origin_id = '{$this->originId}' and commented_id = '{$this->getCommentedId($commentedId)}' and parent_id = '{$commentId}'";
         $allReply = $this->getMySqlClient()->fetchAll( $sql );
         return $allReply;

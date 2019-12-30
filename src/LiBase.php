@@ -246,16 +246,23 @@ class LiBase {
         $data["commented_user"] = $extArray["lc_ext_commented_user"];
         unset($extArray["lc_ext_commented_id"],$extArray["lc_ext_user_id"],$extArray["lc_ext_target_user"],$extArray["lc_ext_commented_user"]);
         $data["expands"] = json_encode($extArray);
+        if ( $data["parent_id"] == "0" ) {
+            $data["reply_id"] = "0";
+        }else{
+            $data["reply_id"] = $data["comment_id"];
+        }
         return $data;
     }
 
     //数据库表名
-    public function tableName( $tablePrefix, $commentedId ){
+    public function tableName( $commentedId ){
         $commentedId = $this->getCommentedId($commentedId);
         $tabNum = substr($commentedId,-1);
-        echo $tablePrefix.$tabNum.": \n";
-        //TODO
-        return $tablePrefix.$tabNum;
+        return $this->tablePrefix.$tabNum;
+    }
+
+    public function mergeTableName(){
+        return $this->tablePrefix."merge";
     }
 
     //获取最后错误
@@ -269,8 +276,7 @@ class LiBase {
 
     //redis评分的一个算法
     protected function getRedisScore( $score, $maxInt, $i ){
-        $score = floatval( $score.".".$i );
         $num = intval("1".str_repeat(0,strlen($maxInt))) ;
-        return $score*$num;
+        return $score * $num + $i;
     }
 }

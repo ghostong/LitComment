@@ -27,6 +27,14 @@ class LiRAM  {
         }
     }
 
+    /**
+     * @param $originId 增加来源 不能重复
+     * @param $token 身份认证串 长度不小于32位
+     * @param $name 来源别名
+     * @param $rule 审核规则
+     * @return bool
+     * @throws \Exception
+     */
     public function add( $originId, $token, $name, $rule){
         if( isset($this->db[$originId]) ){ //ID重复
             throw new \Exception("Error : duplicate originId ". $originId." !", 0);
@@ -37,7 +45,7 @@ class LiRAM  {
 
         }
         if ( strlen( $token ) < 32 ) {
-            throw new \Exception("Error : token length mast  greater than 31 !", 0);
+            throw new \Exception("Error : token length mast greater than or equal 32 !", 0);
         }
         $config = new LiConfig();
         if (! $config->isAllowRule($rule) ) {

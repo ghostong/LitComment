@@ -8,478 +8,169 @@
 
 require_once ("./vendor/autoload.php");
 
-class demo{
+//一些变量
+$defCommentedId = "1000" ; //被评论物ID
+$defCommentedUser = "1433";//被评论物所属用户
+$defUserId = "9000";
+$defContent = "不是评论就是回复".rand(1000,9999);
+$defTargetUser = "8080";
+$defExpands = json_encode(["bala"=>11223,"username"=>"备注名称","userlevel"=>"100"]);
 
-    private $comment;
-    private $commentedId = 123;
-    private $commentedUser = 999;
-    private $userId = 1234;
-    private $targetUser =  888;
+//实例化化项目
+$lComment = new \Lit\Comment\Init();
 
-    function __construct(){
+//增加权限(增加可被访问的来源)
+//参数: 来源ID, token字符串, 来源名称, 评论审核规则( 1. 先发后审, 2. 先审后发, 3. 无需审核, 4. 无需展示 )
+$lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 1);
+$lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
 
-        $this->commentedId = rand(100,999);
+//配置项目
+//参数: redis用户名, redis端口, redis认证信息, redisDB
+$lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
+//参数: mysql用户名, mysql端口, mysql用户名, mysql密码, mysql库名, mysql字符集
+$lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
+//参数: 讯搜配置文件
+$lComment->config()->setXunSearchConfig("./lcomment.ini");
+//参数: mysql表名前缀, 用于分表
+$lComment->config()->setMySqlTablePrefix("comment_");
+//参数: rediskey前缀
+$lComment->config()->setRedisKeyPrefix("lc");
 
-        //实例化化项目
-        $lComment = new \Lit\Comment\Init();
+//启动项目
+//参数 要使用的来源ID, 要使用的token
+$lComment->start( 1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB" );
 
-        //增加权限
-        $lComment->ram()->add( 1,"OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB", "测试", 1);
-        $lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
+//打印建表语句
+$lComment->createTableSql();
 
-        //配置项目
-        $lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
-        $lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
-        $lComment->config()->setXunSearchConfig("./lcomment.ini");
-        $lComment->config()->setMySqlTablePrefix("comment_");
-        $lComment->config()->setRedisKeyPrefix("lc");
+/**
+ * 评论部分
+ **/
+$comment = $lComment->comment();
 
-        //启动项目
-        $lComment->start( 1, "OZR3YpmEwd9r4l3igTNJGdnq2SEKZKhB" );
+//增加一条评论
+//参数: 被评论物品ID, 被评论物所属用户, 发起评论的用户ID, 评论内容, 扩展信息(json字符串)
+$commentId = $comment->add( $defCommentedId,$defCommentedUser,$defUserId,$defContent,$defExpands);
 
-        $this->comment = $lComment;
-    }
+//获取一条评论的信息
+//参数: 被评论物品ID, 评论ID
+$info = $comment->getCommentInfo( $defCommentedId, "5e069ee189c4a598" );
 
-    public function createTableSql(){
-        $this->comment->createTableSql();
-    }
+//删除一条评论
+//参数: 被评论物品ID, 评论ID, 评论发起用户或者被评论物所属用户ID
+$success = $comment->del($defCommentedId, "5e069f2e8d699737", $defCommentedUser);
+$success = $comment->del($defCommentedId, "5e069f2e8d699737", $defUserId);
 
-    //增加一条评论
-    public function addComment(){
-        echo __FUNCTION__ . ":增加一条评论\n";
-        $commentId = $this->comment->comment()->add(
-            $this->commentedId, //被评物的ID
-            $this->commentedUser, //被评论物所属用户
-            $this->userId, //发起评论的用户ID
-            "这是一条评论" . rand(100000, 999999), //回复内容
-            json_encode(["userName" => "笑哈哈", "url" => "https://baidu.com"])
-        );
-        var_dump($commentId);
-        return $commentId;
-    }
+//设置评论点赞数量
+//参数: 被评论物品ID, 评论ID, 点赞数设置
+$comment->setLikeNum( $defCommentedId, "5e069f2e8d699737" , 10);
 
-    //获取一条评论的信息
-    public function getComment( $commentId ){
-        echo __FUNCTION__ . ":获取一条评论\n";
-        $commentInfo = $this->comment->comment()->getCommentInfo(
-            $this->commentedId, //被评物的ID
-            $commentId //评论ID
-        );
-        var_dump ($commentInfo);
-    }
+//删除所有评论
+//参数: 被评论物品ID
+$comment->delAll($defCommentedId);
 
-    //删除一条评论
-    public function delComment( $commentId ){
-        echo __FUNCTION__ . ":删除一条评论\n";
-        $result = $this->comment->comment()->del(
-            $this->commentedId, //被评物的ID
-            $commentId, //评论ID
-            $this->userId //评论所有人或者评论发起人
-        );
-        var_dump ($result);
-    }
+//获取被评论物评论数量
+//参数: 被评论物品ID
+$comment->getCommentNum($defCommentedId);
 
-    //获取评论时产生的错误
-    public function getCommentError(){
-        echo __FUNCTION__ . ":获取评论时产生的错误\n";
-        $error = $this->comment->comment()->getLastError();
-        var_dump($error);
-    }
-
-
-    //增加一个回复
-    public function addReply( $commentId ){
-        echo __FUNCTION__ . ":增加一个回复\n";
-        $replyId = $this->comment->reply()->add(
-            $this->commentedId, //被评物的ID
-            $this->commentedUser, //被评论物所属用户
-            $commentId,
-            $this->userId,
-            $this->targetUser,
-            "我就回你了",
-            json_encode(["aa"=>11])
-        );
-        var_dump ($replyId);
-    }
-
-    //获取回复
-    public function getReply( $commentId, $replyId ){
-        echo __FUNCTION__ . ":获取回复\n";
-        $replyInfo = $this->comment->reply()->getReplyInfo(
-            $this->commentedId, //被评物的ID
-            $commentId, //评论ID
-            $replyId //回复ID
-        );
-        var_dump ($replyInfo);
-    }
-
-    //删除回复
-    public function delReply( $commentId, $replyId ){
-        echo __FUNCTION__ . ":获取回复\n";
-        $result = $this->comment->reply()->del(
-            $this->commentedId, //被评物的ID
-            $commentId, //评论ID
-            $replyId, //回复ID
-            $this->commentedUser //回复所有人或者评论发起人
-        );
-        var_dump($result);
-    }
-
-    //获取回复时产生的错误
-    public function getReplyError(){
-        echo __FUNCTION__ . ":获取评论时产生的错误\n";
-        $error = $this->comment->reply()->getLastError();
-        var_dump($error);
-    }
-
-    //初始化评论列表
-    public function setCommentList(){
-        echo __FUNCTION__ . ":初始化评论列表\n";
-        $this->comment->list()->setCommentList(
-            $this->commentedId //被评物的ID
-        );
-    }
-
-    //获取时间序列表
-    public function newCommentList(){
-        echo __FUNCTION__ . ":获取时间序列表\n";
-        $list = $this->comment->list()->timeLineCommentList(
-            $this->commentedId, //被评物的ID
-            0, //索引开始
-            4, //分页大小
-            "desc"  //排序 asc|desc
-        );
-        var_dump ($list);
-    }
-
-    //获取点赞数序列表
-    public function likeCommentList(){
-        echo __FUNCTION__ . ":获取点赞数序列表\n";
-        $list = $this->comment->list()->likeLineCommentList(
-            $this->commentedId, //被评物的ID
-            0, //索引开始
-            4, //分页大小
-            "desc"  //排序 asc|desc
-        );
-        var_dump ($list);
-    }
-
-    //获取回复数序列表
-    public function replyCommentList(){
-        echo __FUNCTION__ . ":获取回复数序列表\n";
-        $list = $this->comment->list()->replyLineCommentList(
-            $this->commentedId, //被评物的ID
-            0, //索引开始
-            4, //分页大小
-            "desc"  //排序 asc|desc
-        );
-        var_dump ($list);
-    }
-
-    //初始化回复列表
-    public function setReplyList( $commentId ){
-        echo __FUNCTION__ . ":初始化回复列表\n";
-        $list = $this->comment->list()->setReplyList(
-            $this->commentedId, //被评物的ID
-            $commentId //评论ID
-        );
-        var_dump ($list);
-    }
-
-    //获取回复时间序列表
-    public function newReplyList ( $commentId ) {
-        echo __FUNCTION__ . ":获取回复时间序列表\n";
-        $list = $this->comment->list()->timeLineReplyList(
-            $this->commentedId, //被评物的ID
-            $commentId, //评论ID
-            0,
-            20,
-            "asc"
-        );
-        var_dump ($list);
-    }
-
-    //设置评论点赞数量
-    public function setCommentLike( $commentId , $num ){
-        echo __FUNCTION__ . ":设置评论点赞数量\n";
-        $result = $this->comment->comment()->setLikeNum (
-            $this->commentedId,
-            $commentId,
-            $num
-        );
-        var_dump ($result);
-    }
-
-    //删除所有评论
-    public function delAllComment () {
-        echo __FUNCTION__ . ":删除所有评论\n";
-        $result = $this->comment->comment()->delAll(
-            $this->commentedId
-        );
-        var_dump ($result);
-    }
-
-    //删除所有回复
-    public function delAllReply( $commentId ){
-        echo __FUNCTION__ . ":删除所有回复\n";
-        $result = $this->comment->reply()->delAll(
-            $this->commentedId,
-            $commentId
-        );
-        var_dump($result);
-    }
-
-    //获取被评论物评论数量
-    public function getCommentNum () {
-        $result = $this->comment->comment()->getCommentNum(
-            $this->commentedId
-        );
-        var_dump($result);
-    }
-
-    //获取评论回复数量
-    public function getReplyNum ( $commentId ) {
-        $result = $this->comment->reply()->getReplyNum(
-            $commentId
-        );
-        var_dump($result);
-    }
-
-    public function setTop( $commentId ){
-        $result = $this->comment->opt()->setCommentTop(
-            $this->commentedId,
-            $commentId,
-            10
-        );
-        var_dump ($result);
-    }
-    public function getTop(){
-        $result = $this->comment->opt()->getTopComment(
-            $this->commentedId
-        );
-        var_dump($result);
-    }
-
-    public function delTop ( $commentId ){
-        $result = $this->comment->opt()->delTopComment(
-            $this->commentedId,
-            $commentId
-        );
-    }
-
-    public function commentPass ( $commentId ) {
-        $result = $this->comment->opt()->commentPass(
-            $this->commentedId,
-            $commentId
-        );
-        var_dump ($result);
-    }
-
-    public function commentReject ( $commentId ) {
-        $result = $this->comment->opt()->commentReject(
-            $this->commentedId,
-            $commentId
-        );
-        var_dump ($result);
-    }
-
-    public function replyPass ( $commentId, $replyId ) {
-        $result = $this->comment->opt()->replyPass(
-            $this->commentedId,
-            $commentId,
-            $replyId
-        );
-        var_dump ($result);
-    }
-
-    public function replyReject ( $commentId, $replyId ) {
-        $result = $this->comment->opt()->replyReject(
-            $this->commentedId,
-            $commentId,
-            $replyId
-        );
-        var_dump ($result);
-    }
-
-    public function test(){
-        $ret = $this->comment->opt()->optList(
-            [
-                "comment_id"=>"5e05d5b849fd1893"
-            ]
-        );
-        var_dump ($ret);
-    }
-}
-
-
-$demo = new demo();
-
-$demo->test();
-
-//$demo->createTableSql();
-
-// -------------------- 评论部分 --------------------
-//
-////增加一条评论
-//$commentId = $demo->addComment();
-
-//
-////获取一条评论的信息
-//$demo->getComment( $commentId );
-//
-////删除一条评论
-//$demo->delComment( $commentId );
-//
-////删除所有评论
-//$demo->delAllComment();
-//
-////设置评论点赞数量
-//$demo->setCommentLike( "5e010d27f205f8.94025250" , 100);
-//
-////获取评论时产生的错误
-//$demo->getCommentError();
-//
-//// -------------------- 回复 --------------------
-//
-////增加一个回复
-//$replyId = $demo->addReply("5e04aa4adee2c7.89814180");
-//
-////获取回复
-//$demo->getReply( "5e01069ed109b3.32294299", $replyId);
-//
-////删除回复
-//$demo->delReply( "5e01069ed109b3.32294299", "5e010a14aec762.18053372" );
-//
-////删除所有回复
-//$demo->delAllReply("5e01069ed109b3.32294299");
-//
-////获取回复时产生的错误
-//$demo->getReplyError();
-//
-//
-//// -------------------- 列表 --------------------
-//
-////初始化评论列表
-//$demo->setCommentList();
-//
-////获取评论时间序列表
-//$demo->newCommentList();
-//
-////获取评论点赞数序列表
-//$demo->likeCommentList();
-//
-////获取回复数序列表
-//$demo->replyCommentList();
-//
-////初始化回复列表
-//$demo->setReplyList( "5e01069ed109b3.32294299");
-//
-////获取回复时间序列表
-//$demo->newReplyList( "5e01069ed109b3.32294299" );
-//
-////获取被评论物评论数量
-//$demo->getCommentNum();
-//
-////获取评论回复数量
-//$demo->getReplyNum("5e0380dc039049.39147680");
-
-
-// -------------------- 运营 --------------------
-////置顶评论
-//$demo->setTop("5e04b232130024.15458178");
-
-////获取置顶评论
-//$demo->getTop("5e04b232130024.15458178");
-
-//删除置顶
-//$demo->delTop("5e04b232130024.15458178");
-
-//评论通过
-//$demo->commentPass("5e04b232130024.15458178");
-
-//评论拒绝
-//$demo->commentReject( "5e04b232130024.15458178" );
-
-//回复通过
-//$demo->replyPass("5e04ab28989367.11773034","5e04ab289f2848.94288041");
-
-//回复拒绝
-//$demo->replyReject("5e04ab28989367.11773034","5e04ab289f2848.94288041");
-
-
-
-
-
-
-
-
-
-
-
-
+//获取评论时产生的错误
+$error = $comment->getLastError();
 
 
 /**
+ * 回复部分
+ **/
+$reply = $lComment->reply();
+
+//增加一个回复
+//参数: 被评论物品ID, 被评论物所属用户, 评论ID, 发起回复的用户ID, 评论内容, 扩展信息(json字符串)
+$replyId = $reply->add( $defCommentedId,$defCommentedUser,"5e069ee189c4a598",$defUserId,$defTargetUser,$defContent,$defExpands );
+
+//获取回复
+//参数: 被评论物品ID, 评论ID, 回复ID
+$info = $reply->getReplyInfo( $defCommentedId, "5e069ee189c4a598", "5e06a1da71bf0609" );
+
+//删除回复
+//参数: 被评论物品ID, 评论ID, 回复ID, 评论发起用户或者被评论物所属用户ID
+$success = $reply->del( $defCommentedId, "5e069ee189c4a598", "5e06a1da71bf0609" ,$defUserId );
+
+//删除评论回复
+//参数: 被评论物品ID, 评论ID
+$reply->delAll( $defCommentedId, "5e069ee189c4a598" );
+
+//获取评论回复数量
+//参数: 评论ID
+$reply->getReplyNum( "5e069ee189c4a598" );
+
+//获取回复时产生的错误
+$error = $reply->getLastError();
 
 
-function buildIndex($xs) {
-$xs->index->stopRebuild();
-$xs->index->clean();
-$xs->index->beginRebuild();
-$sql = "select * from comment_merge ";
-$pdo = new \Lit\Drivers\LiMySQL( "192.168.31.246", $port='3306', "comment", "123456", "comment", $charSet='utf8' );
-$res = $pdo->query($sql);
-foreach ($res as $val) {
-$doc = new XSDocument;
-$doc->setFields($val);
-$xs->index->add($doc);
-}
-$result = $xs->index->endRebuild();
-var_dump ($result);
-}
+/**
+ * 各种列表
+ **/
+$list = $lComment->list();
 
-function addData ( $xs ){
-$data = array(
-"comment_id" => uniqid(),
-"origin_id" =>  uniqid(),
-"commented_id" => uniqid(),
-"parent_id" => uniqid (),
-"user_id" => uniqid(),
-"commented_user"=> uniqid(),
-"content"=> uniqid(),
-"status" => rand (-1,1),
-"createtime"=>time(),
-);
+//初始化评论列表  (此方法一般为自动触发,数据无异常时不要调用)
+//参数: 被评物ID
+$list->setCommentList( $defCommentedId );
 
-$doc = new XSDocument;
-$doc->setFields($data);
-var_dump ( $xs->index->add($doc) );
+//获取时间序列表
+//参数: 被评物ID, 索引开始, 分页大小, 排序 asc|desc
+$list->timeLineCommentList( $defCommentedId, 0, 4, "desc" );
 
+//获取点赞数序列表
+//参数: 被评物ID, 索引开始, 分页大小, 排序 asc|desc
+$list->likeLineCommentList( $defCommentedId, 0, 4, "desc" );
 
-}
+//获取回复数序列表
+//参数: 被评物ID, 索引开始, 分页大小, 排序 asc|desc
+$list->replyLineCommentList( $defCommentedId, 0, 4, "desc" );
 
-function search ( $xs ) {
-try {
+//初始化回复列表
+//参数: 被评物的ID, 评论ID
+$list->setReplyList( $defCommentedId, "5e069ee189c4a598");
 
-$search = $xs->search; // 获取 搜索对象
-//        $search->addWeight('origin_id',"2");
-$search->setSort ("createtime",false);
-$search->setQuery('origin_id:1');
-$search->addRange('createtime',1577440696,1577440704);
-//        $search->setQuery('comment_id:14');
-$search->setLimit(10);
-$docs = $search->search(); // 执行搜索，将搜索结果文档保存在 $docs 数组
+//获取回复时间序列表
+//参数: 被评物ID, 评论ID, 索引开始, 分页大小, 排序 asc|desc
+$list->timeLineReplyList( $defCommentedId, "5e069ee189c4a598", 0, 5 , "asc");
 
-var_dump ( $search->count() );
+/**
+ * 运营部分
+ **/
+$opt = $lComment->opt();
 
-var_dump ($docs);
+//评论置顶
+//参数: 被评物的ID, 评论ID, 置顶等级
+$opt->setCommentTop($defCommentedId,"5e069ee189c4a598", 10);
 
-}catch (XSException $e){
+//获取置顶评论
+//参数: 被评物的ID
+$opt->getTopComment($defCommentedId);
 
-echo "\n" . $e->getTraceAsString() . "\n";
+//取消置顶
+//参数: 被评物的ID, 评论ID
+$opt->delTopComment($defCommentedId,"5e069ee189c4a598");
 
-}
+//审核通过
+//参数: 被评物的ID, 评论ID
+$opt->commentPass( $defCommentedId,"5e069ee189c4a598" );
 
-}
+//审核拒绝
+//参数: 被评物的ID, 评论ID
+$opt->commentReject(  $defCommentedId,"5e069ee189c4a598" );
 
- */
+//回复审核通过
+//参数: 被评物的ID, 评论ID, 回复ID
+$opt->replyPass(  $defCommentedId,"5e069ee189c4a598","5e06a1da71bf0609" );
+
+//回复审核拒绝
+//参数: 被评物的ID, 评论ID, 回复ID
+$opt->replyReject(  $defCommentedId,"5e069ee189c4a598","5e06a1da71bf0609" );
+
+//重新构建索引 ( 建议每小时更新一次索引 )
+$opt->buildIndex();
+
+//运营后台查询列表
+//参数: 字段过滤[origin_id,commented_id,parent_id,user_id,commented_user,status], 时间区间(十位时间戳), 排序字段[createtime,like_num,reply_num], 搜素关键词, 分页[从第几个开始,获取多少个]
+$opt->optList( [ "origin_id"=> "1"], [ "1577440695","1577440704"],[ "like_num"=>"desc"], "关键词",[100,20] );

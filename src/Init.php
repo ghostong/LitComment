@@ -33,7 +33,13 @@ class Init {
     private $ramObj;
     private $optObj;
 
-    public function start( $originId, $token ){
+
+    /**
+     * @param $originId 要使用的来源
+     * @param $token 要使用的token
+     * @throws \Exception
+     */
+    public function start($originId, $token ){
         $this->ram()->checkAccess($originId,$token ) ;
         $this->originId = $originId;
         $this->commentRule = $this->ram()->getRule($this->originId);
@@ -89,7 +95,7 @@ class Init {
     }
 
     // xunsearch 连接
-    private function getXunSearchClient(){
+    private function getXunSearchClient( ){
         if ( ! $this->xunSearchClient ) {
             $this->setXunSearchClient();
         }
@@ -106,6 +112,7 @@ class Init {
             $this->commentObj = new LiComment( $this->originId, $this->commentRule );
             $this->commentObj->setRedisClient( $this->getRedisClient() );
             $this->commentObj->setMySqlClient( $this->getMySqlClient() );
+            $this->commentObj->setXunSearchClient( $this->getXunSearchClient() );
             $this->commentObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->commentObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->commentObj->setReply( $this->reply() );
@@ -125,6 +132,7 @@ class Init {
             $this->replyObj = new LiReply( $this->originId, $this->commentRule );
             $this->replyObj->setRedisClient( $this->getRedisClient() );
             $this->replyObj->setMySqlClient( $this->getMySqlClient() );
+            $this->replyObj->setXunSearchClient( $this->getXunSearchClient() );
             $this->replyObj->setRedisKeyPrefix( $this->config()->getRedisKeyPrefix() );
             $this->replyObj->setMySqlTablePrefix( $this->config()->getMySqlTablePrefix() );
             $this->replyObj->setComment( $this->comment() );
@@ -157,7 +165,6 @@ class Init {
     public function opt(){
         if (! $this->serviceStart ){
             throw new \Exception("Error : must call start !", 0);
-
         }
         if (!is_object($this->optObj)) {
             $this->optObj = new LiOpt( $this->originId, $this->commentRule );

@@ -147,7 +147,7 @@ class LiConfig {
         return $this->xunSearchConfigFile;
     }
 
-    // xunSearch 设置
+    // xunSearch 配置文件
     public function setXunSearchConfig ( $configFile ) {
         $this->xunSearchConfigFile = $configFile;
     }

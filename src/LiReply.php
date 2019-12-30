@@ -68,7 +68,7 @@ class LiReply extends LiBase {
         if (empty($commentedId) || empty($commentId) || empty($replyId)) {
             return [];
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $replyIdInfo = $this->getMySqlClient()->GetOne( $tableName, 'comment_id = ?', $replyId) ;
         if (!$this->getCheck( $commentId, $replyIdInfo )){
             return [];
@@ -129,7 +129,7 @@ class LiReply extends LiBase {
             $this->setLastError(__FILE__,__LINE__,"评论ID:".$commentId." 不存在!");
             return 0;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $data = [
             "origin_id"  => $this->originId,
             "commented_id" => $commentedId,
@@ -164,7 +164,7 @@ class LiReply extends LiBase {
         if ( ! $this->deleteCheck( $commentId, $replyInfo,$actionUserId ) ) {
             return false;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $replyId);
+        $tableName = $this->tableName($commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'comment_id = ? limit 1', $replyId );
         if ($rowCount > 0) {
             $this->onDel( $replyInfo );
@@ -196,10 +196,9 @@ class LiReply extends LiBase {
         if (!$this->getCheck($commentId, $replyInfo)){
             return false;
         }
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $sql = "update {$tableName} set {$setStr} where `comment_id` = ? limit 1";
         $setValue[] = $replyId;
-        var_dump ($setValue);
         $pdoStatement = $this->getMySqlClient()->execute($sql,$setValue);
         echo $this->getMySqlClient()->LastSql();
         if ( $pdoStatement ) {
@@ -220,7 +219,7 @@ class LiReply extends LiBase {
      */
     public function delAll ( $commentedId, $commentId ){
         $allReply = $this->getList()->getReplyListByDb( $commentedId, $commentId );
-        $tableName = $this->tableName($this->getMySqlTablePrefix(), $commentedId);
+        $tableName = $this->tableName($commentedId);
         $rowCount = $this->getMySqlClient()->Del ( $tableName, 'origin_id = ? and commented_id = ? and parent_id = ? ', $this->originId, $this->getCommentedId($commentedId), $commentId );
         if ( $rowCount > 0 ) {
             $this->onDelAll( $commentedId, $commentId, $allReply );
@@ -266,6 +265,11 @@ class LiReply extends LiBase {
         $this->getComment()->setReplyNum($replyInfo["commented_id"], $replyInfo["parent_id"], $replyNum);
         //重置回复有关的列表
         $this->getList()->setReplyList( $replyInfo["commented_id"], $replyInfo["parent_id"] );
+
+        //写入评论搜索引擎
+        $doc = new \XSDocument;
+        $doc->setFields($replyInfo);
+        $this->getXunSearchClient()->index->add($doc);
     }
 
     private function onDel ( $replyInfo ) {
@@ -279,15 +283,22 @@ class LiReply extends LiBase {
         }
         //重置回复有关的列表
         $this->getList()->setReplyList( $replyInfo["commented_id"], $replyInfo["parent_id"] );
+
+        //删除评论搜索引擎
+        $this->getXunSearchClient()->index->del($replyInfo["comment_id"]);
     }
 
     private function onDelAll ( $commentedId, $commentId, $allReply ) {
         //删除回复对应的redis key
+        $this->getRedisClient()->multi();
         foreach ($allReply as $key=>$val) {
             $replyId = $val["comment_id"];
             $key = $this->getReplyInfoKey($replyId);
             $this->getRedisClient()->del($key);
+            //删除评论搜索引擎
+            $this->getXunSearchClient()->index->del($replyId);
         }
+        $this->getRedisClient()->exec();
         //修改评论的回复数
         $this->getComment()->setReplyNum($commentedId, $commentId, 0);
         //重置回复有关的列表
@@ -297,5 +308,10 @@ class LiReply extends LiBase {
     private function onUpdate ( $replyInfo ){
         $this->setReplyInfo($replyInfo["commented_id"],$replyInfo["parent_id"],$replyInfo["comment_id"]);
         $this->getList()->setReplyList( $replyInfo["commented_id"],$replyInfo["parent_id"] );
+
+        //更新评论搜索引擎
+        $doc = new \XSDocument;
+        $doc->setFields($replyInfo);
+        $this->getXunSearchClient()->index->update($doc);
     }
 }
