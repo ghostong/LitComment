@@ -26,13 +26,17 @@ $lComment->ram()->add( 2,"11111111232312321321312131231231", "测试2", 1);
 
 //配置项目
 //参数: redis用户名, redis端口, redis认证信息, redisDB
-$lComment->config()->setRedisConfig("192.168.31.246", 6379, "123@456@", 0);
+$lComment->config()->setRedisConfig("127.0.0.1", 6379, "123456", 0);
+
 //参数: mysql用户名, mysql端口, mysql用户名, mysql密码, mysql库名, mysql字符集
-$lComment->config()->setMySqlConfig("192.168.31.246", 3306, "comment", "123456", "comment", "utf8mb4");
+$lComment->config()->setMySqlConfig("127.0.0.1", 3306, "comment", "123456", "comment", "utf8mb4");
+
 //参数: 讯搜配置文件
 $lComment->config()->setXunSearchConfig("./lcomment.ini");
+
 //参数: mysql表名前缀, 用于分表
 $lComment->config()->setMySqlTablePrefix("comment_");
+
 //参数: rediskey前缀
 $lComment->config()->setRedisKeyPrefix("lc");
 
